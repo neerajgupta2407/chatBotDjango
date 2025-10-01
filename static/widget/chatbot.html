@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Chatbot Widget</title>
+    <script>
+        // Load bot configuration immediately to prevent color flash
+        (async function() {
+            try {
+                const apiBase = window.location.origin.replace('/widget', '');
+                const response = await fetch(`${apiBase}/api/sessions/bot-config`);
+                if (response.ok) {
+                    const config = await response.json();
+                    if (config.botColor) {
+                        document.documentElement.style.setProperty('--bot-primary-color', config.botColor);
+                    }
+                    if (config.botMsgBgColor) {
+                        document.documentElement.style.setProperty('--bot-msg-bg-color', config.botMsgBgColor);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load bot config:', e);
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/widget/styles.css">
+</head>
+<body>
+    <!-- Floating minimized icon (outside main container) -->
+    <div id="floating-icon" class="floating-icon hidden">
+        <div class="chat-bubble-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div id="chatbot-container">
+        <!-- Header -->
+        <div id="chatbot-header">
+            <div class="header-content">
+                <div class="bot-info">
+                    <div class="bot-avatar">🤖</div>
+                    <div class="bot-details">
+                        <span class="bot-name" id="bot-name">Claude Assistant</span>
+                        <span class="bot-status" id="bot-status">Ready to help</span>
+                    </div>
+                </div>
+                <button id="minimize-btn" class="control-btn" title="Minimize">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="messages-container">
+            <div id="messages-list">
+                <div class="message bot-message welcome-message">
+                    <div class="message-content">
+                        <p>👋 Hello! I'm here to help you with questions about this page. What would you like to know?</p>
+                    </div>
+                    <div class="message-time" id="welcome-time"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div id="typing-indicator" class="typing-indicator hidden">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="typing-text" id="typing-text">Claude is typing...</span>
+        </div>
+
+        <!-- File Upload Area - Temporarily Disabled -->
+        <!-- <div id="file-upload-container" class="file-upload-container hidden">
+            <div class="file-upload-info">
+                <span id="file-info-text">Upload JSON/CSV files to ask questions about your data</span>
+                <button id="close-file-upload" class="close-btn">×</button>
+            </div>
+            <div class="file-drop-zone" id="file-drop-zone">
+                <div class="file-drop-content">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14,2 14,8 20,8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10,9 9,9 8,9"></polyline>
+                    </svg>
+                    <p>Drop your JSON or CSV file here or <button id="browse-files" class="browse-btn">browse</button></p>
+                    <small>Maximum file size: 10MB</small>
+                </div>
+            </div>
+            <input type="file" id="file-input" accept=".json,.csv" style="display: none;">
+            <div id="upload-progress" class="upload-progress hidden">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span id="upload-status">Uploading...</span>
+            </div>
+        </div> -->
+
+        <!-- File Info Display - Temporarily Disabled -->
+        <!-- <div id="file-info-display" class="file-info-display hidden">
+            <div class="file-info-header">
+                <span id="uploaded-file-name">data.csv</span>
+                <button id="remove-file" class="remove-btn" title="Remove file">×</button>
+            </div>
+            <div class="file-info-details">
+                <span id="file-details"></span>
+            </div>
+        </div> -->
+
+        <!-- Input Area -->
+        <div id="input-container">
+            <!-- File upload feature temporarily disabled -->
+            <!-- <div class="input-controls">
+                <button id="file-upload-btn" class="control-btn" title="Upload file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7,10 12,15 17,10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+            </div> -->
+            <div class="input-wrapper">
+                <textarea
+                    id="message-input"
+                    placeholder="Ask me anything about this page..."
+                    rows="1"
+                    maxlength="1000"
+                ></textarea>
+                <button id="send-btn" class="send-btn" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                    </svg>
+                </button>
+            </div>
+            <div class="input-footer">
+                <span class="character-count">0/1000</span>
+                <span class="powered-by" id="powered-by">Powered by Claude</span>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div id="connection-status" class="connection-status hidden">
+            <span class="status-text">Connecting...</span>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Connection Error</h3>
+            <p id="error-message">Unable to connect to the chat service. Please try again later.</p>
+            <button id="retry-btn" class="retry-btn">Retry</button>
+            <button id="close-error-btn" class="close-btn">Close</button>
+        </div>
+    </div>
+
+    <script src="/static/widget/chatbot.js"></script>
+</body>
+</html>
