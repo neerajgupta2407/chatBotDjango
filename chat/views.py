@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
@@ -54,9 +55,11 @@ class ChatMessageView(APIView):
             }
             session.messages.append(user_message)
 
-            # Get AI provider preference
-            provider_name = session.config.get("aiProvider") or next(
-                iter(ai_provider._providers.keys())
+            # Get AI provider preference (session config > env setting > first available)
+            provider_name = (
+                session.config.get("aiProvider")
+                or settings.AI_PROVIDER
+                or next(iter(ai_provider._providers.keys()))
             )
 
             # Build context for AI

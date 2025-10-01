@@ -188,6 +188,7 @@ CSRF_TRUSTED_ORIGINS = (
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
 OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
 AI_PROVIDER = env("AI_PROVIDER", default="claude")
+ENABLE_DUMMY_PROVIDER = env("ENABLE_DUMMY_PROVIDER", default=False)
 
 # Bot Configuration
 BOT_NAME = env("BOT_NAME", default="Claude Assistant")
@@ -197,6 +198,7 @@ BOT_MSG_BG_COLOR = env("BOT_MSG_BG_COLOR", default="#667eea")
 BOT_ICON = env("BOT_ICON", default=None)
 CLAUDE_BOT_NAME = env("CLAUDE_BOT_NAME", default="Claude Assistant")
 OPENAI_BOT_NAME = env("OPENAI_BOT_NAME", default="GPT Assistant")
+DUMMY_BOT_NAME = env("DUMMY_BOT_NAME", default="Dummy Assistant")
 
 # Session Configuration
 CHAT_SESSION_TIMEOUT = 30 * 60  # 30 minutes in seconds

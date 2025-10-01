@@ -4,11 +4,12 @@ from django.conf import settings
 
 from .anthropic_provider import AnthropicProvider
 from .base import BaseAIProvider
+from .dummy_provider import DummyProvider
 from .openai_provider import OpenAIProvider
 
 
 class AIProviderFactory:
-    """Factory class for managing AI providers (Claude and OpenAI)"""
+    """Factory class for managing AI providers (Claude, OpenAI, and Dummy)"""
 
     _instance = None
     _providers: Dict[str, BaseAIProvider] = {}
@@ -30,6 +31,10 @@ class AIProviderFactory:
         # Initialize OpenAI
         if settings.OPENAI_API_KEY:
             self._providers["openai"] = OpenAIProvider(api_key=settings.OPENAI_API_KEY)
+
+        # Initialize Dummy (always available)
+        if getattr(settings, "ENABLE_DUMMY_PROVIDER", False):
+            self._providers["dummy"] = DummyProvider()
 
     def get_provider(self, provider_name: Optional[str] = None) -> BaseAIProvider:
         """Get AI provider instance"""

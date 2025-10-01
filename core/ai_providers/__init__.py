@@ -1,3 +1,3 @@
-from .factory import AIProviderFactory
+from .factory import ai_provider
 
-__all__ = ["AIProviderFactory"]
+__all__ = ["ai_provider"]
