@@ -35,8 +35,16 @@ class ChatMessageView(APIView):
 
         try:
             # Get session
+            client = request.auth
             try:
                 session = Session.objects.get(id=session_id)
+
+                # If client is authenticated, verify ownership
+                if client and session.client != client:
+                    return Response(
+                        {"error": "Session not found. Please create a new session."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
             except Session.DoesNotExist:
                 return Response(
                     {"error": "Session not found. Please create a new session."},
@@ -151,9 +159,16 @@ class ChatHistoryView(APIView):
 
     def get(self, request, session_id):
         logger.info(f"Chat Request - GET /history/{session_id}")
+        client = request.auth
 
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
 
             return Response(
                 {
@@ -176,9 +191,17 @@ class ClearHistoryView(APIView):
 
     def delete(self, request, session_id):
         logger.info(f"Chat Request - DELETE /history/{session_id}")
+        client = request.auth
 
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
             previous_count = len(session.messages)
 
             session.messages = []

@@ -32,8 +32,15 @@ class FileUploadView(APIView):
 
         try:
             # Get session
+            client = request.auth
             try:
                 session = Session.objects.get(id=session_id)
+
+                # If client is authenticated, verify ownership
+                if client and session.client != client:
+                    return Response(
+                        {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                    )
             except Session.DoesNotExist:
                 return Response(
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
@@ -103,8 +110,16 @@ class FileInfoView(APIView):
     """Get file information for a session"""
 
     def get(self, request, session_id):
+        client = request.auth
+
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
 
             if not session.file_data:
                 return Response(
@@ -134,6 +149,7 @@ class FileQueryView(APIView):
     """Query file data"""
 
     def post(self, request, session_id):
+        client = request.auth
         query = request.data.get("query")
 
         if not query:
@@ -143,6 +159,12 @@ class FileQueryView(APIView):
 
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
 
             if not session.file_data:
                 return Response(
@@ -177,8 +199,16 @@ class FileDeleteView(APIView):
     """Delete file data from session"""
 
     def delete(self, request, session_id):
+        client = request.auth
+
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
 
             if not session.file_data:
                 return Response(

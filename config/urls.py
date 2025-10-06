@@ -23,6 +23,8 @@ from django.urls import include, path
 from django.utils import timezone
 from django.views.generic import TemplateView
 
+from clients.views import WidgetConfigView
+
 
 def health_check(request):
     """Health check endpoint"""
@@ -35,6 +37,8 @@ urlpatterns = [
     path("api/sessions/", include("chat_sessions.urls")),
     path("api/chat/", include("chat.urls")),
     path("api/files/", include("files.urls")),
+    path("api/clients/", include("clients.urls")),
+    path("api/widget/config", WidgetConfigView.as_view(), name="widget-config"),
     path(
         "widget/chatbot.html",
         TemplateView.as_view(

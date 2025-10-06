@@ -19,7 +19,7 @@ class DummyProvider(BaseAIProvider):
 
     @property
     def default_model(self) -> str:
-        return "dummy-model-v1"
+        return settings.DUMMY_MODEL
 
     async def generate_response(
         self, messages: List[Dict[str, str]], options: Dict[str, Any] = None
@@ -28,7 +28,7 @@ class DummyProvider(BaseAIProvider):
         if options is None:
             options = {}
 
-        model = options.get("model", self.default_model)
+        model = options.get("model") or self.default_model
 
         # Get the last user message
         user_messages = [msg for msg in messages if msg.get("role") == "user"]

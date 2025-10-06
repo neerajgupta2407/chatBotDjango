@@ -19,7 +19,7 @@ class OpenAIProvider(BaseAIProvider):
 
     @property
     def default_model(self) -> str:
-        return "gpt-4"
+        return settings.OPENAI_MODEL
 
     async def generate_response(
         self, messages: List[Dict[str, str]], options: Dict[str, Any] = None
@@ -28,7 +28,7 @@ class OpenAIProvider(BaseAIProvider):
         if options is None:
             options = {}
 
-        model = options.get("model", self.default_model)
+        model = options.get("model") or self.default_model
         max_tokens = options.get("maxTokens", 1000)
         temperature = options.get("temperature")
 

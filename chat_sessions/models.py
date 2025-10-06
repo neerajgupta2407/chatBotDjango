@@ -8,6 +8,13 @@ from django.utils import timezone
 
 class Session(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client = models.ForeignKey(
+        "clients.Client",
+        on_delete=models.CASCADE,
+        related_name="sessions",
+        null=True,
+        blank=True,
+    )
     config = models.JSONField(default=dict, blank=True)
     messages = models.JSONField(default=list, blank=True)
     file_data = models.JSONField(null=True, blank=True)

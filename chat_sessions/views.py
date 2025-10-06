@@ -11,20 +11,37 @@ class SessionCreateView(APIView):
     """Create a new session"""
 
     def post(self, request):
+        client = request.auth  # Get client from API key authentication
         config = request.data.get("config", {})
 
-        # Merge environment-based bot configuration with user config
-        bot_config = {
-            "botName": settings.BOT_NAME,
-            "poweredBy": settings.BOT_POWERED_BY,
-            "botColor": settings.BOT_COLOR,
-            "botIcon": settings.BOT_ICON,
-            "botMsgBgColor": settings.BOT_MSG_BG_COLOR,
-        }
+        # If client is authenticated, use client's configuration as base
+        if client:
+            client_config = {
+                "botName": client.config.get("bot_name", settings.BOT_NAME),
+                "poweredBy": client.config.get(
+                    "powered_by_text", settings.BOT_POWERED_BY
+                ),
+                "botColor": client.config.get("primary_color", settings.BOT_COLOR),
+                "botIcon": client.config.get("bot_icon_url", settings.BOT_ICON),
+                "botMsgBgColor": client.config.get(
+                    "bot_message_bg_color", settings.BOT_MSG_BG_COLOR
+                ),
+            }
+            merged_config = {**client_config, **config}
 
-        merged_config = {**bot_config, **config}
-
-        session = Session.objects.create(config=merged_config)
+            # Create session linked to client
+            session = Session.objects.create(client=client, config=merged_config)
+        else:
+            # Fallback to environment-based configuration for backward compatibility
+            bot_config = {
+                "botName": settings.BOT_NAME,
+                "poweredBy": settings.BOT_POWERED_BY,
+                "botColor": settings.BOT_COLOR,
+                "botIcon": settings.BOT_ICON,
+                "botMsgBgColor": settings.BOT_MSG_BG_COLOR,
+            }
+            merged_config = {**bot_config, **config}
+            session = Session.objects.create(config=merged_config)
 
         return Response(
             {
@@ -41,8 +58,17 @@ class SessionDetailView(APIView):
     """Get session data"""
 
     def get(self, request, session_id):
+        client = request.auth
+
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
             session.update_activity()
 
             return Response(
@@ -64,8 +90,17 @@ class SessionConfigUpdateView(APIView):
     """Update session configuration"""
 
     def put(self, request, session_id):
+        client = request.auth
+
         try:
             session = Session.objects.get(id=session_id)
+
+            # If client is authenticated, verify ownership
+            if client and session.client != client:
+                return Response(
+                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
             config = request.data.get("config", {})
 
             session.config = {**session.config, **config}
@@ -90,9 +125,17 @@ class SessionStatsView(APIView):
     def get(self, request):
         from datetime import timedelta
 
-        total_sessions = Session.objects.count()
+        client = request.auth
+
+        # If client is authenticated, show only their stats
+        if client:
+            sessions_query = Session.objects.filter(client=client)
+        else:
+            sessions_query = Session.objects.all()
+
+        total_sessions = sessions_query.count()
         five_minutes_ago = timezone.now() - timedelta(minutes=5)
-        recently_active = Session.objects.filter(
+        recently_active = sessions_query.filter(
             last_activity__gte=five_minutes_ago
         ).count()
 

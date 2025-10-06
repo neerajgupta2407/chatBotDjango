@@ -57,6 +57,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    "clients",
     "chat_sessions",
     "chat",
     "files",
@@ -73,6 +74,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.DomainWhitelistMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -166,6 +168,9 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Django REST Framework
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "core.authentication.APIKeyAuthentication",
+    ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",
@@ -189,6 +194,11 @@ ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
 OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
 AI_PROVIDER = env("AI_PROVIDER", default="claude")
 ENABLE_DUMMY_PROVIDER = env("ENABLE_DUMMY_PROVIDER", default=False)
+
+# Model Configuration
+CLAUDE_MODEL = env("CLAUDE_MODEL", default="claude-3-5-haiku-20241022")
+OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
+DUMMY_MODEL = env("DUMMY_MODEL", default="dummy-1.0")
 
 # Bot Configuration
 BOT_NAME = env("BOT_NAME", default="Claude Assistant")
