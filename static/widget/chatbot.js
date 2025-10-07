@@ -3,6 +3,7 @@ class ClaudeChatWidget {
         this.sessionId = null;
         this.config = {};
         this.apiBaseUrl = this.getApiBaseUrl();
+        this.apiKey = this.getApiKey();
         this.isMinimized = true;
         this.messageQueue = [];
         this.isProcessing = false;
@@ -13,6 +14,13 @@ class ClaudeChatWidget {
         this.loadConfigFromURL();
 
         this.initializeElements();
+
+        // Verify critical elements exist before proceeding
+        if (!this.elements.container || !this.elements.messageInput) {
+            console.error('Critical DOM elements missing. Widget cannot initialize.');
+            return;
+        }
+
         this.attachEventListeners();
         this.setupCrossOriginCommunication();
         this.initializeSession();
@@ -20,6 +28,12 @@ class ClaudeChatWidget {
 
         // Start minimized by default
         this.toggleMinimize(true);
+    }
+
+    getApiKey() {
+        // Get API key from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('apiKey') || null;
     }
 
     getApiBaseUrl() {
@@ -125,6 +139,12 @@ class ClaudeChatWidget {
     }
 
     attachEventListeners() {
+        // Check if all required elements exist
+        if (!this.elements.messageInput || !this.elements.sendBtn) {
+            console.error('Required DOM elements not found');
+            return;
+        }
+
         // Message input events
         this.elements.messageInput.addEventListener('input', () => {
             this.handleInputChange();
@@ -235,11 +255,16 @@ class ClaudeChatWidget {
             }
 
             // Create session
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/api/sessions/create`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({ config: this.config })
             });
 
@@ -286,11 +311,16 @@ class ClaudeChatWidget {
 
         // Update session configuration
         if (this.sessionId) {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             fetch(`${this.apiBaseUrl}/api/sessions/${this.sessionId}/config`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({ config: this.config })
             }).catch(error => {
                 console.error('Failed to update session config:', error);
@@ -307,11 +337,16 @@ class ClaudeChatWidget {
 
         // Update session with page data
         if (this.sessionId) {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             fetch(`${this.apiBaseUrl}/api/sessions/${this.sessionId}/config`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({ config: this.config })
             }).catch(error => {
                 console.error('Failed to update session with page data:', error);
@@ -359,11 +394,16 @@ class ClaudeChatWidget {
         this.updateBotStatus('Thinking...');
 
         try {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/api/chat/message`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({
                     sessionId: this.sessionId,
                     message: message,
@@ -516,8 +556,14 @@ class ClaudeChatWidget {
 
         // Clear chat history on server
         if (this.sessionId) {
+            const headers = {};
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             fetch(`${this.apiBaseUrl}/api/chat/history/${this.sessionId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: headers
             }).catch(error => {
                 console.error('Failed to clear chat history:', error);
             });
@@ -645,8 +691,14 @@ class ClaudeChatWidget {
                 this.elements.progressFill.style.width = progress + '%';
             }, 100);
 
+            const headers = {};
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/api/files/upload`, {
                 method: 'POST',
+                headers: headers,
                 body: formData
             });
 
@@ -709,8 +761,14 @@ class ClaudeChatWidget {
 
     async removeFile() {
         try {
+            const headers = {};
+            if (this.apiKey) {
+                headers['X-API-Key'] = this.apiKey;
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/api/files/${this.sessionId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: headers
             });
 
             if (response.ok) {
@@ -812,10 +870,78 @@ class ClaudeChatWidget {
     }
 }
 
+// Check if we're in the parent page or iframe
+function initializeWidget() {
+    // Prevent double initialization
+    if (window.claudeWidgetInitialized) {
+        return;
+    }
+    window.claudeWidgetInitialized = true;
+
+    const container = document.getElementById('chatbot-container');
+
+    if (!container) {
+        // We're in the parent page - create iframe loader
+        initializeIframeLoader();
+    } else {
+        // We're in the iframe - initialize the widget normally
+        // Wait a bit to ensure all DOM elements are ready
+        setTimeout(() => {
+            try {
+                window.claudeWidget = new ClaudeChatWidget();
+            } catch (error) {
+                console.error('Failed to initialize widget:', error);
+            }
+        }, 100);
+    }
+}
+
+// Initialize iframe loader on parent page
+function initializeIframeLoader() {
+    // Get API key from script tag data attribute
+    const scriptTag = document.currentScript || document.querySelector('script[data-api-key]');
+    const apiKey = scriptTag ? scriptTag.getAttribute('data-api-key') : null;
+
+    if (!apiKey) {
+        console.error('ClaudeChatWidget: API key not found. Add data-api-key attribute to script tag.');
+        return;
+    }
+
+    // Get the base URL from the script src
+    const scriptSrc = scriptTag.src;
+    const baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/static'));
+
+    // Create iframe container
+    const iframe = document.createElement('iframe');
+    iframe.id = 'claude-chatbot-iframe';
+    iframe.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 400px;
+        height: 600px;
+        border: none;
+        border-radius: 12px;
+        z-index: 999999;
+        background: transparent;
+    `;
+
+    // Set iframe source to chatbot.html
+    iframe.src = `${baseUrl}/static/widget/chatbot.html?apiKey=${encodeURIComponent(apiKey)}`;
+
+    // Append to body
+    document.body.appendChild(iframe);
+
+    console.log('ClaudeChatWidget: Iframe loaded with API key');
+}
+
 // Initialize the widget when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.claudeWidget = new ClaudeChatWidget();
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWidget);
+} else {
+    // DOM already loaded
+    initializeWidget();
+}
 
 // Export for external access
 window.ClaudeChatWidget = ClaudeChatWidget;

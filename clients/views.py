@@ -1,5 +1,7 @@
 import logging
 
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -140,7 +142,7 @@ class WidgetEmbedCodeView(APIView):
         # Generate embed code
         base_url = request.build_absolute_uri("/")[:-1]  # Remove trailing slash
         embed_code = f"""<!-- Chatbot Widget -->
-<script src="{base_url}/static/widget/chatbot.js" data-api-key="{client.api_key}"></script>"""
+<script src="{base_url}/widget/chatbot.js?apiKey={client.api_key}"></script>"""
 
         return Response(
             {
@@ -149,3 +151,61 @@ class WidgetEmbedCodeView(APIView):
                 "api_key": client.api_key,
             }
         )
+
+
+class WidgetJavaScriptView(APIView):
+    """Serve chatbot.js dynamically with client configuration embedded"""
+
+    authentication_classes = []  # Disable DRF authentication for this view
+    permission_classes = []  # Allow public access
+
+    def get(self, request):
+        api_key = request.GET.get("apiKey")
+
+        # Default configuration
+        context = {
+            "api_key": api_key or "",
+            "api_base_url": request.build_absolute_uri("/")[:-1],
+            "bot_name": "AI Assistant",
+            "bot_color": "#667eea",
+            "bot_msg_bg_color": "#667eea",
+            "bot_icon_url": "",
+            "powered_by_text": "Powered by AI",
+        }
+
+        # Try to load client-specific configuration
+        if api_key:
+            try:
+                client = Client.objects.get(api_key=api_key, is_active=True)
+                config = client.config
+
+                # Override defaults with client configuration
+                context.update(
+                    {
+                        "bot_name": config.get("bot_name", context["bot_name"]),
+                        "bot_color": config.get("primary_color", context["bot_color"]),
+                        "bot_msg_bg_color": config.get(
+                            "bot_message_bg_color", context["bot_msg_bg_color"]
+                        ),
+                        "bot_icon_url": config.get("bot_icon_url", ""),
+                        "powered_by_text": config.get(
+                            "powered_by_text", context["powered_by_text"]
+                        ),
+                    }
+                )
+
+                logger.info(f"Serving widget JS for client: {client.name}")
+
+            except Client.DoesNotExist:
+                logger.warning(f"Invalid API key in widget JS request: {api_key}")
+
+        # Render JavaScript template
+        javascript_content = render_to_string("widget/chatbot.js", context)
+
+        # Return as JavaScript file
+        response = HttpResponse(
+            javascript_content, content_type="application/javascript"
+        )
+        # Add cache control headers
+        response["Cache-Control"] = "public, max-age=300"  # Cache for 5 minutes
+        return response
