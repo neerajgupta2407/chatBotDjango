@@ -913,7 +913,7 @@ function initializeIframeLoader() {
 
     // Create iframe container
     const iframe = document.createElement('iframe');
-    iframe.id = 'claude-chatbot-iframe';
+    iframe.id = 'chatbot-iframe';
     iframe.style.cssText = `
         position: fixed;
         bottom: 20px;
