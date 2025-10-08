@@ -1,17 +1,35 @@
+// Client Configuration (injected by Django)
+const WIDGET_CONFIG = {
+    apiKey: '{{ api_key }}',
+    apiBaseUrl: '{{ api_base_url }}',
+    botName: '{{ bot_name|escapejs }}',
+    botColor: '{{ bot_color }}',
+    botMsgBgColor: '{{ bot_msg_bg_color }}',
+    botIconUrl: '{{ bot_icon_url }}',
+    poweredByText: '{{ powered_by_text|escapejs }}'
+};
+
 class ClaudeChatWidget {
     constructor() {
         this.sessionId = null;
         this.config = {};
-        this.apiBaseUrl = this.getApiBaseUrl();
-        this.apiKey = this.getApiKey();
+        this.apiBaseUrl = WIDGET_CONFIG.apiBaseUrl;
+        this.apiKey = WIDGET_CONFIG.apiKey;
         this.isMinimized = true;
         this.messageQueue = [];
         this.isProcessing = false;
         this.currentProvider = 'claude';
-        this.currentProviderName = 'Claude Assistant';
+        this.currentProviderName = WIDGET_CONFIG.botName;
+        this.botConfig = {
+            botName: WIDGET_CONFIG.botName,
+            botColor: WIDGET_CONFIG.botColor,
+            botMsgBgColor: WIDGET_CONFIG.botMsgBgColor,
+            botIcon: WIDGET_CONFIG.botIconUrl,
+            poweredBy: WIDGET_CONFIG.poweredByText
+        };
 
-        // Apply config from URL params immediately to avoid flash of default colors
-        this.loadConfigFromURL();
+        // Apply client colors immediately to avoid flash
+        this.applyClientBranding();
 
         this.initializeElements();
 
@@ -30,48 +48,31 @@ class ClaudeChatWidget {
         this.toggleMinimize(true);
     }
 
+    applyClientBranding() {
+        // Apply bot colors immediately
+        if (this.botConfig.botColor) {
+            this.applyBotColors(this.botConfig.botColor);
+        }
+
+        // Apply message background color
+        if (this.botConfig.botMsgBgColor) {
+            this.applyMessageBgColor(this.botConfig.botMsgBgColor);
+        }
+    }
+
     getApiKey() {
-        // Get API key from URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('apiKey') || null;
+        // Return embedded API key
+        return WIDGET_CONFIG.apiKey;
     }
 
     getApiBaseUrl() {
-        // Get API base URL from current location or configuration
-        const currentHost = window.location.origin;
-        // Remove /widget path if present
-        return currentHost.replace('/widget', '');
+        // Return embedded API base URL
+        return WIDGET_CONFIG.apiBaseUrl;
     }
 
     loadConfigFromURL() {
-        // Parse URL parameters for initial configuration
-        const urlParams = new URLSearchParams(window.location.search);
-        const configParam = urlParams.get('config');
-
-        if (configParam) {
-            try {
-                const config = JSON.parse(decodeURIComponent(configParam));
-
-                // Apply bot configuration immediately if present
-                if (config.botColor) {
-                    document.documentElement.style.setProperty('--bot-primary-color', config.botColor);
-                    const darkerColor = this.darkenColor(config.botColor, 20);
-                    document.documentElement.style.setProperty('--bot-primary-color-dark', darkerColor);
-                    const lighterColor = this.lightenColor(config.botColor, 80);
-                    document.documentElement.style.setProperty('--bot-primary-color-light', lighterColor);
-                }
-
-                if (config.botMsgBgColor) {
-                    document.documentElement.style.setProperty('--bot-msg-bg-color', config.botMsgBgColor);
-                    const darkerColor = this.darkenColor(config.botMsgBgColor, 20);
-                    document.documentElement.style.setProperty('--bot-msg-bg-color-dark', darkerColor);
-                }
-
-                this.config = config;
-            } catch (e) {
-                console.warn('Invalid config parameter:', e);
-            }
-        }
+        // Config is now embedded in the JavaScript, no need to parse from URL
+        // This method is kept for backward compatibility but does nothing
     }
 
     darkenColor(color, percent) {
@@ -898,18 +899,13 @@ function initializeWidget() {
 
 // Initialize iframe loader on parent page
 function initializeIframeLoader() {
-    // Get API key from script tag data attribute
-    const scriptTag = document.currentScript || document.querySelector('script[data-api-key]');
-    const apiKey = scriptTag ? scriptTag.getAttribute('data-api-key') : null;
+    const apiKey = WIDGET_CONFIG.apiKey;
+    const baseUrl = WIDGET_CONFIG.apiBaseUrl;
 
     if (!apiKey) {
-        console.error('ClaudeChatWidget: API key not found. Add data-api-key attribute to script tag.');
+        console.error('ClaudeChatWidget: API key not found in configuration.');
         return;
     }
-
-    // Get the base URL from the script src
-    const scriptSrc = scriptTag.src;
-    const baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/static'));
 
     // Create iframe container
     const iframe = document.createElement('iframe');
@@ -922,17 +918,28 @@ function initializeIframeLoader() {
         height: 600px;
         border: none;
         border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
         z-index: 999999;
         background: transparent;
     `;
 
-    // Set iframe source to chatbot.html
-    iframe.src = `${baseUrl}/static/widget/chatbot.html?apiKey=${encodeURIComponent(apiKey)}`;
+    // Set iframe source to chatbot.html with embedded config
+    const configParams = new URLSearchParams({
+        apiKey: apiKey,
+        botName: WIDGET_CONFIG.botName,
+        botColor: WIDGET_CONFIG.botColor,
+        botMsgBgColor: WIDGET_CONFIG.botMsgBgColor,
+        botIconUrl: WIDGET_CONFIG.botIconUrl,
+        poweredByText: WIDGET_CONFIG.poweredByText,
+        _t: Date.now() // Cache buster
+    });
+
+    iframe.src = `${baseUrl}/static/widget/chatbot.html?${configParams.toString()}`;
 
     // Append to body
     document.body.appendChild(iframe);
 
-    console.log('ClaudeChatWidget: Iframe loaded with API key');
+    console.log('ClaudeChatWidget: Iframe loaded with client configuration');
 }
 
 // Initialize the widget when DOM is loaded

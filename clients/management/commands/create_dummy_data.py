@@ -21,7 +21,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from chat.models import Session
+from chat.models import FileUpload, Message, Session
 from clients.models import Client
 
 
@@ -373,9 +373,27 @@ class Command(BaseCommand):
             session = Session.objects.create(
                 client=client,
                 config=template["config"],
-                messages=template["messages"],
-                file_data=template.get("file_data"),
             )
+
+            # Create messages for this session
+            for msg_data in template["messages"]:
+                Message.objects.create(
+                    session=session,
+                    role=msg_data["role"],
+                    content=msg_data["content"],
+                )
+
+            # Create file upload if file_data exists
+            if template.get("file_data"):
+                file_data = template["file_data"]
+                FileUpload.objects.create(
+                    session=session,
+                    file_name=file_data["filename"],
+                    file_type="csv",
+                    file_size=1024,  # Dummy size
+                    data=file_data["data"],
+                    summary={"description": file_data["summary"]},
+                )
 
             # Update last_activity to simulate different session ages
             session.last_activity = timezone.now() - timedelta(minutes=i * 5)
@@ -395,10 +413,15 @@ class Command(BaseCommand):
         expired_session = Session.objects.create(
             client=client,
             config={"aiProvider": "claude"},
-            messages=[
-                {"role": "user", "content": "This is an old session"},
-            ],
         )
+
+        # Create message for expired session
+        Message.objects.create(
+            session=expired_session,
+            role="user",
+            content="This is an old session",
+        )
+
         expired_session.last_activity = timezone.now() - timedelta(hours=1)
         expired_session.save()
 

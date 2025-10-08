@@ -16,8 +16,6 @@ class Session(models.Model):
         blank=True,
     )
     config = models.JSONField(default=dict, blank=True)
-    messages = models.JSONField(default=list, blank=True)
-    file_data = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)
 

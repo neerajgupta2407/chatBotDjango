@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ai_providers import ai_provider
-from chat.models import Session
+from chat.models import Message, Session
 from chat.services import ChatService
 
 logger = logging.getLogger(__name__)
@@ -54,13 +54,12 @@ class ChatMessageView(APIView):
             if config:
                 session.config = {**session.config, **config}
 
-            # Add user message to conversation history
-            user_message = {
-                "role": "user",
-                "content": message,
-                "timestamp": timezone.now().timestamp() * 1000,
-            }
-            session.messages.append(user_message)
+            # Save user message to Message model
+            user_msg_obj = Message.objects.create(
+                session=session,
+                role="user",
+                content=message,
+            )
 
             # Get AI provider preference (session config > env setting > first available)
             provider_name = (
@@ -69,8 +68,13 @@ class ChatMessageView(APIView):
                 or next(iter(ai_provider._providers.keys()))
             )
 
-            # Build context for AI
-            conversation_history = session.messages[-10:]  # Last 10 messages
+            # Build context for AI using normalized messages (last 10)
+            conversation_history = [
+                msg.to_dict()
+                for msg in session.conversation_messages.order_by("-timestamp")[:10]
+            ]
+            # Reverse to get chronological order
+            conversation_history.reverse()
             context_prompt = ChatService.build_context_prompt(
                 message, session.config, conversation_history, session.file_data
             )
@@ -104,15 +108,18 @@ class ChatMessageView(APIView):
 
             assistant_response = ai_response["content"]
 
-            # Add assistant response to conversation history
-            assistant_message = {
-                "role": "assistant",
-                "content": assistant_response,
-                "timestamp": timezone.now().timestamp() * 1000,
-            }
-            session.messages.append(assistant_message)
+            # Save assistant response to Message model
+            assistant_msg_obj = Message.objects.create(
+                session=session,
+                role="assistant",
+                content=assistant_response,
+                metadata={
+                    "provider": ai_response.get("provider"),
+                    "model": ai_response.get("model"),
+                },
+            )
 
-            # Update session
+            # Update session last_activity
             session.save()
 
             response_time = (timezone.now() - start_time).total_seconds() * 1000
@@ -120,11 +127,14 @@ class ChatMessageView(APIView):
                 f"Chat Response - SessionID: {session_id}, ResponseTime: {response_time}ms, Provider: {ai_response.get('provider')}"
             )
 
+            # Get total message count
+            message_count = session.conversation_messages.count()
+
             return Response(
                 {
                     "response": assistant_response,
                     "sessionId": str(session.id),
-                    "messageCount": len(session.messages),
+                    "messageCount": message_count,
                     "provider": ai_response.get("provider"),
                     "model": ai_response.get("model"),
                     "timestamp": timezone.now().isoformat(),
@@ -169,11 +179,14 @@ class ChatHistoryView(APIView):
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
+            # Get messages from Message model
+            messages = [msg.to_dict() for msg in session.conversation_messages.all()]
+
             return Response(
                 {
                     "sessionId": str(session.id),
-                    "messages": session.messages,
-                    "messageCount": len(session.messages),
+                    "messages": messages,
+                    "messageCount": len(messages),
                 }
             )
         except Session.DoesNotExist:
@@ -201,10 +214,11 @@ class ClearHistoryView(APIView):
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
-            previous_count = len(session.messages)
+            # Get count before deletion
+            previous_count = session.conversation_messages.count()
 
-            session.messages = []
-            session.save()
+            # Delete all messages from Message model
+            session.conversation_messages.all().delete()
 
             logger.info(
                 f"Chat Response - DELETE /history/{session_id} - Cleared {previous_count} messages"
@@ -214,6 +228,7 @@ class ClearHistoryView(APIView):
                 {
                     "sessionId": str(session.id),
                     "status": "cleared",
+                    "messagesCleared": previous_count,
                     "timestamp": timezone.now().isoformat(),
                 }
             )
