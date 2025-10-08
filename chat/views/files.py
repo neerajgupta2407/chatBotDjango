@@ -7,7 +7,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from chat.models import Session
+from chat.models import FileUpload, Session
 from chat.services import FileProcessor
 
 
@@ -72,14 +72,20 @@ class FileUploadView(APIView):
                 else:
                     raise ValueError("Unsupported file type")
 
-                # Store file data in session
-                session.file_data = {
-                    **processed_data,
-                    "originalName": uploaded_file.name,
-                    "uploadedAt": timezone.now().timestamp() * 1000,
-                    "filePath": str(file_path),
-                }
-                session.save()
+                # Deactivate any existing files for this session
+                session.uploaded_files.filter(is_active=True).update(is_active=False)
+
+                # Create FileUpload record
+                file_upload = FileUpload.objects.create(
+                    session=session,
+                    original_name=uploaded_file.name,
+                    file_path=str(file_path),
+                    file_type=processed_data["type"],
+                    file_size=processed_data["size"],
+                    processed_data=processed_data.get("data", {}),
+                    summary=processed_data.get("summary", ""),
+                    is_active=True,
+                )
 
                 return Response(
                     {
@@ -121,7 +127,10 @@ class FileInfoView(APIView):
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
-            if not session.file_data:
+            # Get active file upload for this session
+            active_file = session.uploaded_files.filter(is_active=True).first()
+
+            if not active_file:
                 return Response(
                     {"error": "No file uploaded for this session"},
                     status=status.HTTP_404_NOT_FOUND,
@@ -129,13 +138,11 @@ class FileInfoView(APIView):
 
             return Response(
                 {
-                    "fileName": session.file_data.get("originalName"),
-                    "fileType": session.file_data.get("type"),
-                    "fileSize": session.file_data.get("size"),
-                    "uploadedAt": timezone.datetime.fromtimestamp(
-                        session.file_data.get("uploadedAt") / 1000
-                    ).isoformat(),
-                    "summary": session.file_data.get("summary"),
+                    "fileName": active_file.original_name,
+                    "fileType": active_file.file_type,
+                    "fileSize": active_file.file_size,
+                    "uploadedAt": active_file.uploaded_at.isoformat(),
+                    "summary": active_file.summary,
                 }
             )
 
@@ -166,21 +173,36 @@ class FileQueryView(APIView):
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
-            if not session.file_data:
+            # Get active file upload for this session
+            active_file = session.uploaded_files.filter(is_active=True).first()
+
+            if not active_file:
                 return Response(
                     {"error": "No file uploaded for this session"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
+            # Build file_data dict for FileProcessor
+            file_data = {
+                "type": active_file.file_type,
+                "size": active_file.file_size,
+                "data": active_file.processed_data,
+                "summary": (
+                    active_file.summary
+                    if isinstance(active_file.summary, dict)
+                    else {"description": active_file.summary}
+                ),
+            }
+
             # Query the file data
-            query_result = FileProcessor.query_data(session.file_data, query)
+            query_result = FileProcessor.query_data(file_data, query)
 
             return Response(
                 {
                     "query": query,
                     "results": query_result,
-                    "fileName": session.file_data.get("originalName"),
-                    "fileType": session.file_data.get("type"),
+                    "fileName": active_file.original_name,
+                    "fileType": active_file.file_type,
                 }
             )
 
@@ -210,23 +232,25 @@ class FileDeleteView(APIView):
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
-            if not session.file_data:
+            # Get active file upload for this session
+            active_file = session.uploaded_files.filter(is_active=True).first()
+
+            if not active_file:
                 return Response(
                     {"error": "No file data to delete"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
             # Clean up physical file
-            file_path = session.file_data.get("filePath")
-            if file_path and os.path.exists(file_path):
+            if active_file.file_path and os.path.exists(active_file.file_path):
                 try:
-                    os.unlink(file_path)
+                    os.unlink(active_file.file_path)
                 except Exception as e:
                     print(f"Failed to delete physical file: {e}")
 
-            # Remove file data from session
-            session.file_data = None
-            session.save()
+            # Mark file as inactive (soft delete)
+            active_file.is_active = False
+            active_file.save()
 
             return Response(
                 {"success": True, "message": "File data deleted successfully"}

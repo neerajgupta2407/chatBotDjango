@@ -75,8 +75,24 @@ class ChatMessageView(APIView):
             ]
             # Reverse to get chronological order
             conversation_history.reverse()
+
+            # Get file data from FileUpload model (if any active files exist)
+            file_data = None
+            active_file = session.uploaded_files.filter(is_active=True).first()
+            if active_file:
+                file_data = {
+                    "type": active_file.file_type,
+                    "size": active_file.file_size,
+                    "data": active_file.processed_data,
+                    "summary": (
+                        active_file.summary
+                        if isinstance(active_file.summary, dict)
+                        else {"description": active_file.summary}
+                    ),
+                }
+
             context_prompt = ChatService.build_context_prompt(
-                message, session.config, conversation_history, session.file_data
+                message, session.config, conversation_history, file_data
             )
 
             logger.info(
