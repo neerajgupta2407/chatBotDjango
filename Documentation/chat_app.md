@@ -1,7 +1,7 @@
 # Chat App - Complete Documentation
 
-**Version**: 2.0
-**Date**: October 8, 2025
+**Version**: 2.1
+**Date**: October 9, 2025
 **Status**: Production Ready
 
 ---
@@ -13,12 +13,15 @@ The `chat/` app is a unified Django application that handles all chat-related fu
 ### Key Features
 
 - **Session Management**: Create and manage chat sessions with custom configurations
+- **User Tracking**: Track individual users with `user_identifier` field for analytics
 - **Message Storage**: Normalized database storage for all conversation messages
 - **AI Provider Integration**: Support for Claude, OpenAI, and custom providers
 - **File Upload & Analysis**: JSON/CSV file upload with AI-powered analysis
-- **Multi-Tenant Support**: Client isolation with API key authentication
+- **Multi-Tenant Support**: Client isolation with mandatory API key authentication
+- **Secure API Access**: All endpoints require X-API-Key header (returns 401 without valid key)
 - **Context Building**: Smart context management with token limits
 - **Message History**: Full conversation history with chronological ordering
+- **Analytics**: User engagement metrics and session statistics by user
 
 ---
 
@@ -66,6 +69,7 @@ Represents a chat session with configuration and state.
 **Fields:**
 - `id` (UUID): Primary key, auto-generated
 - `client` (FK): Foreign key to Client model (nullable for backward compatibility)
+- `user_identifier` (CharField): Identifies the end-user within a client (e.g., email, UUID)
 - `config` (JSONField): Session configuration (AI provider, page context, etc.)
 - `messages` (JSONField): Legacy field, no longer used
 - `file_data` (JSONField): Legacy field for file data
@@ -76,6 +80,7 @@ Represents a chat session with configuration and state.
 
 **Indexes:**
 - `chatbot_ses_last_ac_51af55_idx` on `-last_activity`
+- `chatbot_ses_user_id_78bc44_idx` on `user_identifier` for analytics queries
 
 **Related Names:**
 - `conversation_messages`: Related Message objects
@@ -234,12 +239,30 @@ active_files = FileUpload.objects.filter(
 ### Base URL
 All endpoints are under `/api/chat/`
 
+### Authentication
+
+**IMPORTANT**: All chat API endpoints require authentication via `X-API-Key` header. Requests without a valid API key will be rejected with a 401 Unauthorized error.
+
+```http
+X-API-Key: cb_your_api_key_here
+```
+
+**Error Response (Missing/Invalid API Key):**
+```json
+HTTP 401 Unauthorized
+{
+  "error": "Authentication required",
+  "detail": "Valid API key must be provided in X-API-Key header"
+}
+```
+
 ### Session Endpoints
 
 #### 1. Create Session
 ```http
 POST /api/chat/sessions/create
 Content-Type: application/json
+X-API-Key: cb_your_api_key_here
 
 {
   "config": {
@@ -248,7 +271,8 @@ Content-Type: application/json
       "url": "https://example.com",
       "title": "Example"
     }
-  }
+  },
+  "user_identifier": "user@example.com"  // Optional: track end-user
 }
 
 Response 201:
@@ -264,10 +288,14 @@ Response 201:
 }
 ```
 
+**Parameters:**
+- `config` (required): Session configuration object
+- `user_identifier` (optional): Unique identifier for the end-user (email, UUID, etc.)
+
 #### 2. Get Session Details
 ```http
 GET /api/chat/sessions/{session_id}
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 Response 200:
 {
@@ -277,7 +305,7 @@ Response 200:
   "hasFile": false,
   "createdAt": "2025-10-08T12:00:00Z",
   "lastActivity": "2025-10-08T12:30:00Z"
-}
+}`
 ```
 
 #### 3. Update Session Config
@@ -300,7 +328,7 @@ Response 200:
 }
 ```
 
-#### 4. Get Session Stats
+#### 4. Get Session Stats Summary
 ```http
 GET /api/chat/sessions/stats/summary
 
@@ -312,7 +340,30 @@ Response 200:
 }
 ```
 
-#### 5. Get Bot Configuration
+#### 5. Get Session Stats by User
+```http
+GET /api/chat/sessions/stats/by-user
+X-API-Key: cb_your_api_key_here
+
+Response 200:
+{
+  "userStats": {
+    "user1@example.com": 5,
+    "user2@example.com": 3,
+    "anonymous-uuid-123": 2
+  },
+  "summary": {
+    "totalSessions": 34,
+    "sessionsWithUser": 10,
+    "sessionsWithoutUser": 24,
+    "uniqueUsers": 3
+  }
+}
+```
+
+**Description:** Returns session counts grouped by `user_identifier` for analytics and user tracking.
+
+#### 6. Get Bot Configuration
 ```http
 GET /api/chat/sessions/bot-config
 
@@ -334,7 +385,7 @@ Response 200:
 ```http
 POST /api/chat/messages/send
 Content-Type: application/json
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 {
   "sessionId": "uuid",
@@ -365,7 +416,7 @@ Response 200:
 #### 2. Get Message History
 ```http
 GET /api/chat/messages/history/{session_id}
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 Response 200:
 {
@@ -391,7 +442,7 @@ Response 200:
 #### 3. Clear Message History
 ```http
 DELETE /api/chat/messages/clear/{session_id}
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 Response 200:
 {
@@ -412,7 +463,7 @@ Response 200:
 ```http
 POST /api/chat/files/upload
 Content-Type: multipart/form-data
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 Form Data:
 - sessionId: uuid
@@ -436,7 +487,7 @@ Response 200:
 #### 2. Get File Info
 ```http
 GET /api/chat/files/info/{session_id}
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 Response 200:
 {
@@ -470,7 +521,7 @@ Response 200:
 #### 4. Delete File
 ```http
 DELETE /api/chat/files/{session_id}
-X-API-Key: cb_your_api_key (optional)
+X-API-Key: cb_your_api_key_here
 
 Response 200:
 {
@@ -632,6 +683,7 @@ urlpatterns = [
     path("sessions/<uuid:session_id>", views.SessionDetailView.as_view(), name="session-detail"),
     path("sessions/<uuid:session_id>/config", views.SessionConfigUpdateView.as_view(), name="session-config-update"),
     path("sessions/stats/summary", views.SessionStatsView.as_view(), name="session-stats"),
+    path("sessions/stats/by-user", views.SessionUserStatsView.as_view(), name="session-user-stats"),
     path("sessions/bot-config", views.BotConfigView.as_view(), name="bot-config"),
 
     # Messages
@@ -657,65 +709,121 @@ urlpatterns = [
 import requests
 
 BASE_URL = "http://localhost:8000/api/chat"
+API_KEY = "cb_your_api_key_here"
+headers = {"X-API-Key": API_KEY}
 
-# 1. Create session
-response = requests.post(f"{BASE_URL}/sessions/create", json={
-    "config": {"aiProvider": "claude"}
-})
+# 1. Create session with user tracking
+response = requests.post(
+    f"{BASE_URL}/sessions/create",
+    headers=headers,
+    json={
+        "config": {"aiProvider": "claude"},
+        "user_identifier": "user123@example.com"  # Track this specific user
+    }
+)
 session_id = response.json()["sessionId"]
 
 # 2. Send message
-response = requests.post(f"{BASE_URL}/messages/send", json={
-    "sessionId": session_id,
-    "message": "What is Python?"
-})
+response = requests.post(
+    f"{BASE_URL}/messages/send",
+    headers=headers,
+    json={
+        "sessionId": session_id,
+        "message": "What is Python?"
+    }
+)
 print(response.json()["response"])
 
 # 3. Get history
-response = requests.get(f"{BASE_URL}/messages/history/{session_id}")
+response = requests.get(
+    f"{BASE_URL}/messages/history/{session_id}",
+    headers=headers
+)
 messages = response.json()["messages"]
 
 # 4. Clear history
-requests.delete(f"{BASE_URL}/messages/clear/{session_id}")
+requests.delete(
+    f"{BASE_URL}/messages/clear/{session_id}",
+    headers=headers
+)
 ```
 
 ### 2. File Upload & Analysis
 
 ```python
+API_KEY = "cb_your_api_key_here"
+headers = {"X-API-Key": API_KEY}
+
 # 1. Upload CSV file
 files = {"file": open("data.csv", "rb")}
 data = {"sessionId": session_id}
 response = requests.post(
     f"{BASE_URL}/files/upload",
+    headers=headers,
     files=files,
     data=data
 )
 
 # 2. Ask questions about the file
-response = requests.post(f"{BASE_URL}/messages/send", json={
-    "sessionId": session_id,
-    "message": "What are the top 5 products by revenue?"
-})
+response = requests.post(
+    f"{BASE_URL}/messages/send",
+    headers=headers,
+    json={
+        "sessionId": session_id,
+        "message": "What are the top 5 products by revenue?"
+    }
+)
 print(response.json()["response"])
 
 # 3. Query file data
-response = requests.post(f"{BASE_URL}/files/query/{session_id}", json={
-    "query": "revenue"
-})
+response = requests.post(
+    f"{BASE_URL}/files/query/{session_id}",
+    headers=headers,
+    json={"query": "revenue"}
+)
 print(response.json()["results"])
 ```
 
-### 3. Multi-Tenant with API Key
+### 3. User Tracking & Analytics
 
 ```python
 API_KEY = "cb_your_api_key_here"
 headers = {"X-API-Key": API_KEY}
 
-# Create session for specific client
+# Get user statistics
+response = requests.get(
+    f"{BASE_URL}/sessions/stats/by-user",
+    headers=headers
+)
+stats = response.json()
+
+print(f"Total sessions: {stats['summary']['totalSessions']}")
+print(f"Unique users: {stats['summary']['uniqueUsers']}")
+
+# Print sessions per user
+for user, count in stats['userStats'].items():
+    print(f"{user}: {count} sessions")
+
+# Query sessions for specific user (Django shell)
+from chat.models import Session
+user_sessions = Session.objects.filter(user_identifier='user123@example.com')
+print(f"Sessions for user123: {user_sessions.count()}")
+```
+
+### 4. Multi-Tenant with API Key
+
+```python
+API_KEY = "cb_your_api_key_here"
+headers = {"X-API-Key": API_KEY}
+
+# Create session for specific client with user tracking
 response = requests.post(
     f"{BASE_URL}/sessions/create",
     headers=headers,
-    json={"config": {"aiProvider": "claude"}}
+    json={
+        "config": {"aiProvider": "claude"},
+        "user_identifier": "customer@clientdomain.com"
+    }
 )
 
 # Send message (ownership automatically verified)
@@ -727,6 +835,13 @@ response = requests.post(
         "message": "Hello!"
     }
 )
+
+# Get user stats for this client
+response = requests.get(
+    f"{BASE_URL}/sessions/stats/by-user",
+    headers=headers
+)
+print(response.json())
 ```
 
 ---
@@ -781,6 +896,29 @@ search_messages = Message.objects.filter(
 conversation = Message.objects.filter(
     session_id=session_id
 ).order_by('timestamp')
+
+# Get sessions by user identifier
+user_sessions = Session.objects.filter(
+    user_identifier='user@example.com'
+).order_by('-created_at')
+
+# Count sessions per user
+from django.db.models import Count
+user_session_counts = Session.objects.values('user_identifier').annotate(
+    session_count=Count('id')
+).order_by('-session_count')
+
+# Get sessions without user tracking
+anonymous_sessions = Session.objects.filter(
+    user_identifier__isnull=True
+) | Session.objects.filter(user_identifier='')
+
+# Get unique users
+unique_users = Session.objects.exclude(
+    user_identifier__isnull=True
+).exclude(
+    user_identifier=''
+).values_list('user_identifier', flat=True).distinct()
 ```
 
 ### Analytics Queries
@@ -814,6 +952,29 @@ client_stats = Client.objects.annotate(
     session_count=Count('sessions'),
     message_count=Count('sessions__conversation_messages')
 )
+
+# User engagement metrics
+user_engagement = Session.objects.values('user_identifier').annotate(
+    total_sessions=Count('id'),
+    total_messages=Count('conversation_messages'),
+    first_session=Min('created_at'),
+    last_session=Max('last_activity')
+).order_by('-total_sessions')
+
+# Active users in last 24 hours
+from django.utils import timezone
+from datetime import timedelta
+active_users = Session.objects.filter(
+    last_activity__gte=timezone.now() - timedelta(hours=24)
+).values('user_identifier').distinct().count()
+
+# Sessions per user over time
+from django.db.models.functions import TruncDate
+sessions_per_user_per_day = Session.objects.annotate(
+    date=TruncDate('created_at')
+).values('date', 'user_identifier').annotate(
+    count=Count('id')
+).order_by('-date')
 ```
 
 ---
@@ -858,21 +1019,41 @@ class MessageModelTest(TestCase):
 ```python
 from django.test import TestCase
 from rest_framework.test import APIClient
+from clients.models import Client
 
 class ChatAPITest(TestCase):
     def setUp(self):
-        self.client = APIClient()
+        self.client_obj = Client.objects.create(
+            name="Test Client",
+            email="test@example.com"
+        )
+        self.api_client = APIClient()
+        # Set API key in header
+        self.api_client.credentials(HTTP_X_API_KEY=self.client_obj.api_key)
 
-    def test_create_session(self):
-        response = self.client.post('/api/chat/sessions/create', {
-            "config": {"aiProvider": "dummy"}
+    def test_create_session_with_auth(self):
+        """Test session creation with valid API key"""
+        response = self.api_client.post('/api/chat/sessions/create', {
+            "config": {"aiProvider": "dummy"},
+            "user_identifier": "test_user@example.com"
         }, format='json')
         self.assertEqual(response.status_code, 201)
         self.assertIn("sessionId", response.json())
 
+    def test_create_session_without_auth(self):
+        """Test session creation without API key fails"""
+        # Clear credentials
+        client_no_auth = APIClient()
+        response = client_no_auth.post('/api/chat/sessions/create', {
+            "config": {"aiProvider": "dummy"}
+        }, format='json')
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error", response.json())
+
     def test_send_message(self):
+        """Test sending message with authentication"""
         # Create session
-        session_response = self.client.post(
+        session_response = self.api_client.post(
             '/api/chat/sessions/create',
             {"config": {"aiProvider": "dummy"}},
             format='json'
@@ -880,7 +1061,7 @@ class ChatAPITest(TestCase):
         session_id = session_response.json()["sessionId"]
 
         # Send message
-        response = self.client.post('/api/chat/messages/send', {
+        response = self.api_client.post('/api/chat/messages/send', {
             "sessionId": session_id,
             "message": "Test",
             "config": {"aiProvider": "dummy"}
@@ -889,30 +1070,54 @@ class ChatAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("response", response.json())
         self.assertEqual(response.json()["messageCount"], 2)
+
+    def test_get_user_stats(self):
+        """Test getting user statistics"""
+        response = self.api_client.get('/api/chat/sessions/stats/by-user')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("userStats", response.json())
+        self.assertIn("summary", response.json())
 ```
 
 ### Manual Testing
 
 ```bash
+# Set your API key
+API_KEY="cb_your_api_key_here"
+
 # 1. Create session
 curl -X POST http://localhost:8000/api/chat/sessions/create \
   -H "Content-Type: application/json" \
-  -d '{"config":{"aiProvider":"dummy"}}'
+  -H "X-API-Key: $API_KEY" \
+  -d '{"config":{"aiProvider":"claude"},"user_identifier":"test@example.com"}'
 
 # 2. Send message
 curl -X POST http://localhost:8000/api/chat/messages/send \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "sessionId":"uuid-here",
     "message":"Hello!",
-    "config":{"aiProvider":"dummy"}
+    "config":{"aiProvider":"claude"}
   }'
 
 # 3. Get history
-curl http://localhost:8000/api/chat/messages/history/uuid-here
+curl http://localhost:8000/api/chat/messages/history/uuid-here \
+  -H "X-API-Key: $API_KEY"
 
 # 4. Clear history
-curl -X DELETE http://localhost:8000/api/chat/messages/clear/uuid-here
+curl -X DELETE http://localhost:8000/api/chat/messages/clear/uuid-here \
+  -H "X-API-Key: $API_KEY"
+
+# 5. Get user statistics
+curl http://localhost:8000/api/chat/sessions/stats/by-user \
+  -H "X-API-Key: $API_KEY"
+
+# Error: Missing API key
+curl -X POST http://localhost:8000/api/chat/sessions/create \
+  -H "Content-Type: application/json" \
+  -d '{"config":{"aiProvider":"claude"}}'
+# Response: 401 Unauthorized - Authentication required
 ```
 
 ---
@@ -1141,13 +1346,196 @@ migrate_legacy_messages()
 
 ---
 
+## Widget Integration & User Tracking
+
+### Overview
+
+The chatbot widget provides embedded chat functionality with automatic user tracking. Widget files are served from `static/widget/` and `templates/widget/` directories.
+
+### User Identification
+
+The widget supports three modes of user identification:
+
+1. **Explicit User Identifier** - Specify via URL parameter
+2. **Auto-Generated UUID** - Automatically created and stored in localStorage
+3. **No Tracking** - Sessions created without user_identifier
+
+### Widget Embedding
+
+#### Option 1: With Specific User (Recommended for authenticated users)
+
+```html
+<script src="https://your-domain.com/widget/chatbot.js?apiKey=cb_xxx&userIdentifier=user@example.com"></script>
+```
+
+#### Option 2: Auto-Generate UUID (For anonymous tracking)
+
+```html
+<script src="https://your-domain.com/widget/chatbot.js?apiKey=cb_xxx"></script>
+```
+
+The widget will:
+- Generate a unique UUID on first visit
+- Store it in localStorage as `chatbot_user_id`
+- Use it for all subsequent sessions
+- Persist across browser sessions
+
+#### Option 3: No User Tracking
+
+```html
+<script src="https://your-domain.com/widget/chatbot.js?apiKey=cb_xxx&noTracking=true"></script>
+```
+
+### User Tracking Flow
+
+```
+User visits page
+    ↓
+Widget loads → Check localStorage for chatbot_user_id
+    ↓
+If exists → Use stored UUID
+    ↓
+If not → Generate new UUID → Store in localStorage
+    ↓
+Create session with user_identifier
+    ↓
+All messages linked to this user
+```
+
+### PostMessage API
+
+The widget communicates with the parent page via PostMessage API:
+
+```javascript
+// Listen for widget events
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'widget_ready') {
+        console.log('Widget loaded');
+    }
+
+    if (event.data.type === 'session_created') {
+        console.log('Session ID:', event.data.sessionId);
+        console.log('User ID:', event.data.userId);
+    }
+
+    if (event.data.type === 'message_received') {
+        console.log('Message:', event.data.message);
+    }
+
+    if (event.data.type === 'widget_minimized') {
+        console.log('Widget minimized');
+    }
+});
+```
+
+### Analytics Integration
+
+Track user behavior with the widget:
+
+```javascript
+// Custom analytics tracking
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'session_created') {
+        // Track session creation
+        analytics.track('Chat Session Created', {
+            userId: event.data.userId,
+            sessionId: event.data.sessionId
+        });
+    }
+
+    if (event.data.type === 'message_received') {
+        // Track bot responses
+        analytics.track('Bot Message Received', {
+            userId: event.data.userId,
+            messageLength: event.data.message.length
+        });
+    }
+});
+```
+
+### User Statistics API
+
+Query user activity via the API:
+
+```python
+import requests
+
+# Get all user statistics
+response = requests.get('http://localhost:8000/api/chat/sessions/stats/by-user')
+stats = response.json()
+
+# Process user data
+for user_id, session_count in stats['userStats'].items():
+    if user_id.startswith('user@'):
+        print(f"Authenticated user {user_id}: {session_count} sessions")
+    elif len(user_id) == 36:  # UUID format
+        print(f"Anonymous user {user_id}: {session_count} sessions")
+```
+
+### Django Admin Integration
+
+View user statistics in Django Admin:
+
+```python
+# chat/admin.py
+from django.contrib import admin
+from django.db.models import Count
+from chat.models import Session
+
+@admin.register(Session)
+class SessionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user_identifier', 'client', 'created_at', 'message_count']
+    list_filter = ['client', 'created_at']
+    search_fields = ['id', 'user_identifier', 'client__email']
+
+    def message_count(self, obj):
+        return obj.conversation_messages.count()
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(msg_count=Count('conversation_messages'))
+```
+
+### Privacy Considerations
+
+- **UUID Storage**: UUIDs stored in localStorage are client-side only
+- **No PII**: Auto-generated UUIDs contain no personally identifiable information
+- **User Control**: Users can clear localStorage to reset tracking
+- **GDPR Compliance**: Allow users to request data deletion via API
+
+### Advanced: Custom User Identification
+
+Integrate with your authentication system:
+
+```javascript
+// Get current user from your app
+const currentUser = getCurrentUser();  // Your auth function
+
+// Pass to widget
+const widgetScript = document.createElement('script');
+widgetScript.src = `https://your-domain.com/widget/chatbot.js?apiKey=cb_xxx&userIdentifier=${currentUser.email}`;
+document.body.appendChild(widgetScript);
+```
+
+---
+
 ## Best Practices
+
+### 0. Authentication (CRITICAL)
+- **ALWAYS** include `X-API-Key` header in all API requests
+- Never hardcode API keys in client-side JavaScript
+- Store API keys in environment variables or secure key management systems
+- Use HTTPS in production to protect API keys in transit
+- Rotate API keys periodically for security
+- Monitor API usage for unauthorized access attempts
 
 ### 1. Session Management
 - Create one session per conversation
+- Always include `user_identifier` when creating sessions for analytics
 - Update session config when AI provider changes
 - Clean up expired sessions periodically
 - Use session.update_activity() to prevent expiration
+- Filter sessions by client in multi-tenant setups
 
 ### 2. Message Storage
 - Always create Message objects (don't use legacy JSONField)
@@ -1173,19 +1561,60 @@ migrate_legacy_messages()
 - Log errors with context
 - Return appropriate HTTP status codes
 
+### 6. User Tracking
+- Use meaningful user identifiers (email, username, etc.) for authenticated users
+- Let widget auto-generate UUIDs for anonymous users
+- Index `user_identifier` field for better query performance
+- Track user engagement with `/api/chat/sessions/stats/by-user` endpoint
+- Regularly analyze user statistics for insights
+- Respect user privacy - don't store PII unnecessarily
+- Implement data retention policies for GDPR compliance
+
 ---
 
 ## Security Considerations
 
-### 1. API Key Authentication
+### 1. API Key Authentication (REQUIRED)
+
+**CRITICAL**: All chat API endpoints require a valid API key in the `X-API-Key` header. Requests without authentication will be rejected with HTTP 401 Unauthorized.
+
 ```python
-# All sensitive endpoints require authentication
-@method_decorator(ensure_csrf_cookie, name='dispatch')
+# All chat endpoints require authentication
+from rest_framework.permissions import IsAuthenticated
+from core.authentication import APIKeyAuthentication
+
 class ChatMessageView(APIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        client = request.auth  # Authenticated client or None
-        # Verify ownership before proceeding
+        client = request.auth  # Authenticated client object
+        # Client ownership automatically verified
+        # Proceed with request
 ```
+
+**Error Handling:**
+```python
+# Missing API key
+HTTP 401 Unauthorized
+{
+    "error": "Authentication required",
+    "detail": "Valid API key must be provided in X-API-Key header"
+}
+
+# Invalid API key
+HTTP 401 Unauthorized
+{
+    "error": "Invalid API key"
+}
+```
+
+**Best Practices:**
+- Never expose API keys in client-side code
+- Rotate API keys periodically
+- Use environment variables to store keys
+- Monitor API key usage for suspicious activity
+- Implement rate limiting per API key (see section 3)
 
 ### 2. Input Validation
 ```python
@@ -1225,6 +1654,17 @@ if file_type not in ['text/csv', 'application/json']:
 
 ## Changelog
 
+### Version 2.1 (October 9, 2025)
+- ✅ **SECURITY**: All chat API endpoints now require X-API-Key authentication
+- ✅ Added user tracking with `user_identifier` field
+- ✅ New endpoint: `/api/chat/sessions/stats/by-user` for user analytics
+- ✅ Widget auto-generates and persists UUID in localStorage
+- ✅ User identification via URL parameter support
+- ✅ Enhanced Django Admin with user filtering
+- ✅ Added database index on `user_identifier` for performance
+- ✅ Privacy controls and GDPR compliance considerations
+- ✅ Updated all examples and tests to include required authentication
+
 ### Version 2.0 (October 8, 2025)
 - ✅ Migrated to normalized Message model
 - ✅ Consolidated into single chat/ app
@@ -1250,6 +1690,53 @@ if file_type not in ['text/csv', 'application/json']:
 
 ---
 
-**Documentation Last Updated**: October 8, 2025
+**Documentation Last Updated**: October 9, 2025
 **Maintained By**: Development Team
 **Questions?** Check `/Documentation/multi_tenant_implementation.md` for multi-tenant setup.
+
+---
+
+## Summary of API Changes in Version 2.1
+
+### BREAKING CHANGES - Authentication Required
+
+**⚠️ CRITICAL**: All chat API endpoints now require authentication via `X-API-Key` header. Requests without a valid API key will be rejected with HTTP 401 Unauthorized.
+
+**Affected Endpoints:**
+- All `/api/chat/sessions/*` endpoints
+- All `/api/chat/messages/*` endpoints
+- All `/api/chat/files/*` endpoints
+
+**Migration Required:**
+All API clients must include the `X-API-Key` header in every request:
+```http
+X-API-Key: cb_your_api_key_here
+```
+
+### New Features
+1. **User Tracking**: Sessions now support `user_identifier` field for tracking individual users
+2. **User Stats Endpoint**: New `/api/chat/sessions/stats/by-user` endpoint for user analytics
+3. **Widget User Identification**: Automatic UUID generation and localStorage persistence
+4. **Enhanced Queries**: New database queries for user engagement metrics
+
+### Updated Endpoints
+- **ALL ENDPOINTS**: Now require `X-API-Key` header (BREAKING CHANGE)
+- `POST /api/chat/sessions/create` - Now accepts optional `user_identifier` parameter
+- `GET /api/chat/sessions/stats/by-user` - NEW: Returns session counts grouped by user
+
+### Database Changes
+- Added `user_identifier` field to Session model
+- Added index on `user_identifier` for performance
+- Support for tracking both authenticated users (email) and anonymous users (UUID)
+
+### Widget Enhancements
+- Auto-generates UUID for anonymous users
+- Stores user ID in localStorage (`chatbot_user_id`)
+- Supports explicit user identification via URL parameter
+- PostMessage API includes user information in events
+
+### Security Improvements
+- Mandatory API key authentication for all chat endpoints
+- Client ownership verification on all requests
+- Rate limiting support per API key
+- Enhanced error messages for authentication failures

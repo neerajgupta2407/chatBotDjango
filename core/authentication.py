@@ -1,5 +1,6 @@
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import BasePermission
 
 from clients.models import Client
 
@@ -27,3 +28,14 @@ class APIKeyAuthentication(BaseAuthentication):
 
         except Client.DoesNotExist:
             raise AuthenticationFailed("Invalid API key")
+
+
+class IsClientAuthenticated(BasePermission):
+    """
+    Permission class that requires a valid client authentication.
+    Used to enforce X-API-Key authentication on chat endpoints.
+    """
+
+    def has_permission(self, request, view):
+        # request.auth contains the client object if authenticated via APIKeyAuthentication
+        return request.auth is not None

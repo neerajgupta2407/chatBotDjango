@@ -195,26 +195,67 @@ class ChatAPIEndpointsTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-    def test_unauthorized_access(self):
-        """Test endpoints without API key - currently not enforced for all endpoints."""
+    def test_unauthorized_access_without_api_key(self):
+        """Test that endpoints require API key authentication."""
         # Create session
         session = Session.objects.create(
             client=self.test_client,
             config={"aiProvider": "claude"},
         )
 
-        # Clear credentials
+        # Clear credentials (remove API key)
         self.client_api.credentials()
 
-        # Try to access endpoints
-        # Note: Currently, API key authentication is not strictly enforced for all endpoints
-        # This test documents the current behavior
+        # Test session creation
+        response = self.client_api.post(
+            "/api/chat/sessions/create",
+            {"config": {"aiProvider": "claude"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)  # Forbidden without auth
+
+        # Test message history
         response = self.client_api.get(
             f"/api/chat/messages/history/{session.id}",
         )
-        # Current behavior: allows access without API key (returns 200)
-        # Future: should return 401 Unauthorized
-        self.assertIn(response.status_code, [200, 401])
+        self.assertEqual(response.status_code, 403)  # Forbidden without auth
+
+        # Test message sending
+        response = self.client_api.post(
+            "/api/chat/messages/send",
+            {"sessionId": str(session.id), "message": "Hello"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)  # Forbidden without auth
+
+        # Test clearing messages
+        response = self.client_api.delete(
+            f"/api/chat/messages/clear/{session.id}",
+        )
+        self.assertEqual(response.status_code, 403)  # Forbidden without auth
+
+    def test_unauthorized_access_with_invalid_api_key(self):
+        """Test that endpoints reject invalid API keys."""
+        # Set invalid API key
+        self.client_api.credentials(HTTP_X_API_KEY="invalid_key_12345")
+
+        # Test session creation
+        response = self.client_api.post(
+            "/api/chat/sessions/create",
+            {"config": {"aiProvider": "claude"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)  # Forbidden with invalid key
+
+        # Test message history
+        session = Session.objects.create(
+            client=self.test_client,
+            config={"aiProvider": "claude"},
+        )
+        response = self.client_api.get(
+            f"/api/chat/messages/history/{session.id}",
+        )
+        self.assertEqual(response.status_code, 403)  # Forbidden with invalid key
 
     def test_message_count_endpoint(self):
         """Test that message count is accurate after multiple operations."""

@@ -9,11 +9,14 @@ from rest_framework.views import APIView
 
 from chat.models import FileUpload, Session
 from chat.services import FileProcessor
+from core.authentication import APIKeyAuthentication, IsClientAuthenticated
 
 
 class FileUploadView(APIView):
     """Upload and process file"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
@@ -34,13 +37,7 @@ class FileUploadView(APIView):
             # Get session
             client = request.auth
             try:
-                session = Session.objects.get(id=session_id)
-
-                # If client is authenticated, verify ownership
-                if client and session.client != client:
-                    return Response(
-                        {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                    )
+                session = Session.objects.get(id=session_id, client=client)
             except Session.DoesNotExist:
                 return Response(
                     {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
@@ -115,17 +112,14 @@ class FileUploadView(APIView):
 class FileInfoView(APIView):
     """Get file information for a session"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def get(self, request, session_id):
         client = request.auth
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
+            session = Session.objects.get(id=session_id, client=client)
 
             # Get active file upload for this session
             active_file = session.uploaded_files.filter(is_active=True).first()
@@ -155,6 +149,9 @@ class FileInfoView(APIView):
 class FileQueryView(APIView):
     """Query file data"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def post(self, request, session_id):
         client = request.auth
         query = request.data.get("query")
@@ -165,13 +162,7 @@ class FileQueryView(APIView):
             )
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
+            session = Session.objects.get(id=session_id, client=client)
 
             # Get active file upload for this session
             active_file = session.uploaded_files.filter(is_active=True).first()
@@ -220,17 +211,14 @@ class FileQueryView(APIView):
 class FileDeleteView(APIView):
     """Delete file data from session"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def delete(self, request, session_id):
         client = request.auth
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
+            session = Session.objects.get(id=session_id, client=client)
 
             # Get active file upload for this session
             active_file = session.uploaded_files.filter(is_active=True).first()

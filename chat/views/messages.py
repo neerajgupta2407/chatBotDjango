@@ -9,12 +9,16 @@ from rest_framework.views import APIView
 from ai_providers import ai_provider
 from chat.models import Message, Session
 from chat.services import ChatService
+from core.authentication import APIKeyAuthentication, IsClientAuthenticated
 
 logger = logging.getLogger(__name__)
 
 
 class ChatMessageView(APIView):
     """Send message to AI provider and get response"""
+
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
 
     def post(self, request):
         start_time = timezone.now()
@@ -36,14 +40,7 @@ class ChatMessageView(APIView):
             # Get session
             client = request.auth
             try:
-                session = Session.objects.get(id=session_id)
-
-                # If client is authenticated, verify ownership
-                if client and session.client != client:
-                    return Response(
-                        {"error": "Session not found. Please create a new session."},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
+                session = Session.objects.get(id=session_id, client=client)
             except Session.DoesNotExist:
                 return Response(
                     {"error": "Session not found. Please create a new session."},
@@ -182,18 +179,15 @@ class ChatMessageView(APIView):
 class ChatHistoryView(APIView):
     """Get conversation history"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def get(self, request, session_id):
         logger.info(f"Chat Request - GET /history/{session_id}")
         client = request.auth
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
+            session = Session.objects.get(id=session_id, client=client)
 
             # Get messages from Message model
             messages = [msg.to_dict() for msg in session.conversation_messages.all()]
@@ -217,18 +211,15 @@ class ChatHistoryView(APIView):
 class ClearHistoryView(APIView):
     """Clear conversation history"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def delete(self, request, session_id):
         logger.info(f"Chat Request - DELETE /history/{session_id}")
         client = request.auth
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
+            session = Session.objects.get(id=session_id, client=client)
 
             # Get count before deletion
             previous_count = session.conversation_messages.count()

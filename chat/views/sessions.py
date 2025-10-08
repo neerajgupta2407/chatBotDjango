@@ -5,48 +5,36 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from chat.models import Session
+from core.authentication import APIKeyAuthentication, IsClientAuthenticated
 
 
 class SessionCreateView(APIView):
     """Create a new session"""
+
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
 
     def post(self, request):
         client = request.auth  # Get client from API key authentication
         config = request.data.get("config", {})
         user_identifier = request.data.get("user_identifier")
 
-        # If client is authenticated, use client's configuration as base
-        if client:
-            client_config = {
-                "botName": client.config.get("bot_name", settings.BOT_NAME),
-                "poweredBy": client.config.get(
-                    "powered_by_text", settings.BOT_POWERED_BY
-                ),
-                "botColor": client.config.get("primary_color", settings.BOT_COLOR),
-                "botIcon": client.config.get("bot_icon_url", settings.BOT_ICON),
-                "botMsgBgColor": client.config.get(
-                    "bot_message_bg_color", settings.BOT_MSG_BG_COLOR
-                ),
-            }
-            merged_config = {**client_config, **config}
+        # Use client's configuration as base
+        client_config = {
+            "botName": client.config.get("bot_name", settings.BOT_NAME),
+            "poweredBy": client.config.get("powered_by_text", settings.BOT_POWERED_BY),
+            "botColor": client.config.get("primary_color", settings.BOT_COLOR),
+            "botIcon": client.config.get("bot_icon_url", settings.BOT_ICON),
+            "botMsgBgColor": client.config.get(
+                "bot_message_bg_color", settings.BOT_MSG_BG_COLOR
+            ),
+        }
+        merged_config = {**client_config, **config}
 
-            # Create session linked to client
-            session = Session.objects.create(
-                client=client, config=merged_config, user_identifier=user_identifier
-            )
-        else:
-            # Fallback to environment-based configuration for backward compatibility
-            bot_config = {
-                "botName": settings.BOT_NAME,
-                "poweredBy": settings.BOT_POWERED_BY,
-                "botColor": settings.BOT_COLOR,
-                "botIcon": settings.BOT_ICON,
-                "botMsgBgColor": settings.BOT_MSG_BG_COLOR,
-            }
-            merged_config = {**bot_config, **config}
-            session = Session.objects.create(
-                config=merged_config, user_identifier=user_identifier
-            )
+        # Create session linked to client
+        session = Session.objects.create(
+            client=client, config=merged_config, user_identifier=user_identifier
+        )
 
         return Response(
             {
@@ -62,18 +50,14 @@ class SessionCreateView(APIView):
 class SessionDetailView(APIView):
     """Get session data"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def get(self, request, session_id):
         client = request.auth
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
-
+            session = Session.objects.get(id=session_id, client=client)
             session.update_activity()
 
             return Response(
@@ -94,18 +78,14 @@ class SessionDetailView(APIView):
 class SessionConfigUpdateView(APIView):
     """Update session configuration"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def put(self, request, session_id):
         client = request.auth
 
         try:
-            session = Session.objects.get(id=session_id)
-
-            # If client is authenticated, verify ownership
-            if client and session.client != client:
-                return Response(
-                    {"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND
-                )
-
+            session = Session.objects.get(id=session_id, client=client)
             config = request.data.get("config", {})
 
             session.config = {**session.config, **config}
@@ -127,16 +107,16 @@ class SessionConfigUpdateView(APIView):
 class SessionStatsView(APIView):
     """Get session statistics"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def get(self, request):
         from datetime import timedelta
 
         client = request.auth
 
-        # If client is authenticated, show only their stats
-        if client:
-            sessions_query = Session.objects.filter(client=client)
-        else:
-            sessions_query = Session.objects.all()
+        # Show only authenticated client's stats
+        sessions_query = Session.objects.filter(client=client)
 
         total_sessions = sessions_query.count()
         five_minutes_ago = timezone.now() - timedelta(minutes=5)
@@ -171,16 +151,16 @@ class BotConfigView(APIView):
 class SessionUserStatsView(APIView):
     """Get session statistics grouped by user identifier"""
 
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsClientAuthenticated]
+
     def get(self, request):
         from django.db.models import Count
 
         client = request.auth
 
-        # If client is authenticated, show only their stats
-        if client:
-            sessions_query = Session.objects.filter(client=client)
-        else:
-            sessions_query = Session.objects.all()
+        # Show only authenticated client's stats
+        sessions_query = Session.objects.filter(client=client)
 
         # Group sessions by user_identifier and count
         user_stats = (
