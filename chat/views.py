@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from chat_sessions.models import Session
-from core.ai_providers import ai_provider
+from llms.ai_providers import ai_provider
 
 from .services import ChatService
 

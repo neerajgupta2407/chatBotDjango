@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from chat_sessions.models import Session
-from core.file_processor import FileProcessor
+from llms.file_processor import FileProcessor
 
 
 class FileUploadView(APIView):

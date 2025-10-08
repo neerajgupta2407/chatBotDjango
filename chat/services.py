@@ -2,7 +2,7 @@ import json
 import math
 from typing import Any, Dict, List, Optional
 
-from core.file_processor import FileProcessor
+from llms.file_processor import FileProcessor
 
 
 class ChatService:
