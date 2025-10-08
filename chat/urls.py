@@ -25,6 +25,11 @@ urlpatterns = [
         views.SessionStatsView.as_view(),
         name="session-stats",
     ),
+    path(
+        "sessions/stats/by-user",
+        views.SessionUserStatsView.as_view(),
+        name="session-user-stats",
+    ),
     path("sessions/bot-config", views.BotConfigView.as_view(), name="bot-config"),
     # Message endpoints (from conversations)
     path("messages/send", views.ChatMessageView.as_view(), name="chat-message"),

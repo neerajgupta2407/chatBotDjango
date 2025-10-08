@@ -11,6 +11,7 @@ from .sessions import (
     SessionCreateView,
     SessionDetailView,
     SessionStatsView,
+    SessionUserStatsView,
 )
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "SessionDetailView",
     "SessionConfigUpdateView",
     "SessionStatsView",
+    "SessionUserStatsView",
     "BotConfigView",
     # Message views
     "ChatMessageView",

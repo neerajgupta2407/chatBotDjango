@@ -15,6 +15,9 @@ class Session(models.Model):
         null=True,
         blank=True,
     )
+    user_identifier = models.CharField(
+        max_length=255, blank=True, null=True, db_index=True
+    )
     config = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)

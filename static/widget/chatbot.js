@@ -9,6 +9,7 @@ class ClaudeChatWidget {
         this.isProcessing = false;
         this.currentProvider = 'claude';
         this.currentProviderName = 'Claude Assistant';
+        this.userIdentifier = this.getUserIdentifier();
 
         // Apply config from URL params immediately to avoid flash of default colors
         this.loadConfigFromURL();
@@ -41,6 +42,53 @@ class ClaudeChatWidget {
         const currentHost = window.location.origin;
         // Remove /widget path if present
         return currentHost.replace('/widget', '');
+    }
+
+    getUserIdentifier() {
+        // Try to get user identifier from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        let userIdentifier = urlParams.get('userIdentifier');
+
+        if (userIdentifier) {
+            // Store in localStorage for persistence
+            try {
+                localStorage.setItem('chatbot_user_identifier', userIdentifier);
+            } catch (e) {
+                console.warn('Failed to store user identifier in localStorage:', e);
+            }
+            return userIdentifier;
+        }
+
+        // Try to get from localStorage
+        try {
+            userIdentifier = localStorage.getItem('chatbot_user_identifier');
+            if (userIdentifier) {
+                return userIdentifier;
+            }
+        } catch (e) {
+            console.warn('Failed to read user identifier from localStorage:', e);
+        }
+
+        // Generate a new UUID if not found
+        userIdentifier = this.generateUUID();
+
+        // Try to store it for future sessions
+        try {
+            localStorage.setItem('chatbot_user_identifier', userIdentifier);
+        } catch (e) {
+            console.warn('Failed to store generated user identifier:', e);
+        }
+
+        return userIdentifier;
+    }
+
+    generateUUID() {
+        // Simple UUID v4 generator
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 
     loadConfigFromURL() {
@@ -265,7 +313,10 @@ class ClaudeChatWidget {
             const response = await fetch(`${this.apiBaseUrl}/api/chat/sessions/create`, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({ config: this.config })
+                body: JSON.stringify({
+                    config: this.config,
+                    user_identifier: this.userIdentifier
+                })
             });
 
             if (!response.ok) {
@@ -911,6 +962,17 @@ function initializeIframeLoader() {
     const scriptSrc = scriptTag.src;
     const baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/static'));
 
+    // Extract userIdentifier from script src URL if provided
+    let userIdentifier = null;
+    if (scriptSrc) {
+        try {
+            const scriptUrl = new URL(scriptSrc);
+            userIdentifier = scriptUrl.searchParams.get('userIdentifier');
+        } catch (e) {
+            console.warn('Failed to parse script URL:', e);
+        }
+    }
+
     // Create iframe container
     const iframe = document.createElement('iframe');
     iframe.id = 'chatbot-iframe';
@@ -926,8 +988,18 @@ function initializeIframeLoader() {
         background: transparent;
     `;
 
+    // Build iframe URL with parameters
+    const iframeParams = new URLSearchParams({
+        apiKey: apiKey
+    });
+
+    // Add userIdentifier if provided
+    if (userIdentifier) {
+        iframeParams.set('userIdentifier', userIdentifier);
+    }
+
     // Set iframe source to chatbot.html
-    iframe.src = `${baseUrl}/static/widget/chatbot.html?apiKey=${encodeURIComponent(apiKey)}`;
+    iframe.src = `${baseUrl}/static/widget/chatbot.html?${iframeParams.toString()}`;
 
     // Append to body
     document.body.appendChild(iframe);

@@ -54,14 +54,15 @@ class SessionAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "client_link",
+        "user_identifier",
         "message_count",
         "file_count",
         "is_expired",
         "created_at",
         "last_activity",
     )
-    list_filter = ("created_at", "last_activity")
-    search_fields = ("id", "client__name", "client__email")
+    list_filter = ("client", "user_identifier", "created_at", "last_activity")
+    search_fields = ("id", "client__name", "client__email", "user_identifier")
     readonly_fields = ("id", "created_at", "last_activity", "is_expired_display")
     inlines = [MessageInline, FileUploadInline]
 
@@ -72,6 +73,7 @@ class SessionAdmin(admin.ModelAdmin):
                 "fields": (
                     "id",
                     "client",
+                    "user_identifier",
                     "is_expired_display",
                 )
             },

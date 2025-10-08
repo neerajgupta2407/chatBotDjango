@@ -13,6 +13,7 @@ class SessionCreateView(APIView):
     def post(self, request):
         client = request.auth  # Get client from API key authentication
         config = request.data.get("config", {})
+        user_identifier = request.data.get("user_identifier")
 
         # If client is authenticated, use client's configuration as base
         if client:
@@ -30,7 +31,9 @@ class SessionCreateView(APIView):
             merged_config = {**client_config, **config}
 
             # Create session linked to client
-            session = Session.objects.create(client=client, config=merged_config)
+            session = Session.objects.create(
+                client=client, config=merged_config, user_identifier=user_identifier
+            )
         else:
             # Fallback to environment-based configuration for backward compatibility
             bot_config = {
@@ -41,7 +44,9 @@ class SessionCreateView(APIView):
                 "botMsgBgColor": settings.BOT_MSG_BG_COLOR,
             }
             merged_config = {**bot_config, **config}
-            session = Session.objects.create(config=merged_config)
+            session = Session.objects.create(
+                config=merged_config, user_identifier=user_identifier
+            )
 
         return Response(
             {
@@ -161,3 +166,51 @@ class BotConfigView(APIView):
         }
 
         return Response(bot_config)
+
+
+class SessionUserStatsView(APIView):
+    """Get session statistics grouped by user identifier"""
+
+    def get(self, request):
+        from django.db.models import Count
+
+        client = request.auth
+
+        # If client is authenticated, show only their stats
+        if client:
+            sessions_query = Session.objects.filter(client=client)
+        else:
+            sessions_query = Session.objects.all()
+
+        # Group sessions by user_identifier and count
+        user_stats = (
+            sessions_query.filter(user_identifier__isnull=False)
+            .values("user_identifier")
+            .annotate(session_count=Count("id"))
+            .order_by("-session_count")
+        )
+
+        # Format response
+        stats_dict = {
+            stat["user_identifier"]: stat["session_count"] for stat in user_stats
+        }
+
+        # Also include total stats
+        total_sessions = sessions_query.count()
+        sessions_with_user = sessions_query.filter(
+            user_identifier__isnull=False
+        ).count()
+        sessions_without_user = total_sessions - sessions_with_user
+
+        return Response(
+            {
+                "userStats": stats_dict,
+                "summary": {
+                    "totalSessions": total_sessions,
+                    "sessionsWithUser": sessions_with_user,
+                    "sessionsWithoutUser": sessions_without_user,
+                    "uniqueUsers": len(stats_dict),
+                },
+                "timestamp": timezone.now().isoformat(),
+            }
+        )

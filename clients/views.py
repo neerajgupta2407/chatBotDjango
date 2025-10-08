@@ -161,6 +161,7 @@ class WidgetJavaScriptView(APIView):
 
     def get(self, request):
         api_key = request.GET.get("apiKey")
+        user_identifier = request.GET.get("userIdentifier")
 
         # Default configuration
         context = {
@@ -171,6 +172,7 @@ class WidgetJavaScriptView(APIView):
             "bot_msg_bg_color": "#667eea",
             "bot_icon_url": "",
             "powered_by_text": "Powered by AI",
+            "user_identifier": user_identifier or "",
         }
 
         # Try to load client-specific configuration

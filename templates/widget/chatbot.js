@@ -6,7 +6,8 @@ const WIDGET_CONFIG = {
     botColor: '{{ bot_color }}',
     botMsgBgColor: '{{ bot_msg_bg_color }}',
     botIconUrl: '{{ bot_icon_url }}',
-    poweredByText: '{{ powered_by_text|escapejs }}'
+    poweredByText: '{{ powered_by_text|escapejs }}',
+    userIdentifier: '{{ user_identifier|escapejs }}'
 };
 
 class ClaudeChatWidget {
@@ -20,6 +21,7 @@ class ClaudeChatWidget {
         this.isProcessing = false;
         this.currentProvider = 'claude';
         this.currentProviderName = WIDGET_CONFIG.botName;
+        this.userIdentifier = this.getUserIdentifier();
         this.botConfig = {
             botName: WIDGET_CONFIG.botName,
             botColor: WIDGET_CONFIG.botColor,
@@ -68,6 +70,53 @@ class ClaudeChatWidget {
     getApiBaseUrl() {
         // Return embedded API base URL
         return WIDGET_CONFIG.apiBaseUrl;
+    }
+
+    getUserIdentifier() {
+        // Try to get user identifier from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        let userIdentifier = urlParams.get('userIdentifier');
+
+        if (userIdentifier) {
+            // Store in localStorage for persistence
+            try {
+                localStorage.setItem('chatbot_user_identifier', userIdentifier);
+            } catch (e) {
+                console.warn('Failed to store user identifier in localStorage:', e);
+            }
+            return userIdentifier;
+        }
+
+        // Try to get from localStorage
+        try {
+            userIdentifier = localStorage.getItem('chatbot_user_identifier');
+            if (userIdentifier) {
+                return userIdentifier;
+            }
+        } catch (e) {
+            console.warn('Failed to read user identifier from localStorage:', e);
+        }
+
+        // Generate a new UUID if not found
+        userIdentifier = this.generateUUID();
+
+        // Try to store it for future sessions
+        try {
+            localStorage.setItem('chatbot_user_identifier', userIdentifier);
+        } catch (e) {
+            console.warn('Failed to store generated user identifier:', e);
+        }
+
+        return userIdentifier;
+    }
+
+    generateUUID() {
+        // Simple UUID v4 generator
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 
     loadConfigFromURL() {
@@ -266,7 +315,10 @@ class ClaudeChatWidget {
             const response = await fetch(`${this.apiBaseUrl}/api/chat/sessions/create`, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({ config: this.config })
+                body: JSON.stringify({
+                    config: this.config,
+                    user_identifier: this.userIdentifier
+                })
             });
 
             if (!response.ok) {
@@ -901,6 +953,7 @@ function initializeWidget() {
 function initializeIframeLoader() {
     const apiKey = WIDGET_CONFIG.apiKey;
     const baseUrl = WIDGET_CONFIG.apiBaseUrl;
+    const userIdentifier = WIDGET_CONFIG.userIdentifier;
 
     if (!apiKey) {
         console.error('ClaudeChatWidget: API key not found in configuration.');
@@ -932,6 +985,11 @@ function initializeIframeLoader() {
         poweredByText: WIDGET_CONFIG.poweredByText,
         _t: Date.now() // Cache buster
     });
+
+    // Add userIdentifier if provided
+    if (userIdentifier) {
+        configParams.set('userIdentifier', userIdentifier);
+    }
 
     iframe.src = `${baseUrl}/static/widget/chatbot.html?${configParams.toString()}`;
 
