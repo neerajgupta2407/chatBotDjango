@@ -7,8 +7,8 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from chat_sessions.models import Session
-from llms.file_processor import FileProcessor
+from chat.models import Session
+from chat.services import FileProcessor
 
 
 class FileUploadView(APIView):

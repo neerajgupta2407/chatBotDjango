@@ -6,10 +6,9 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from chat_sessions.models import Session
-from llms.ai_providers import ai_provider
-
-from .services import ChatService
+from ai_providers import ai_provider
+from chat.models import Session
+from chat.services import ChatService
 
 logger = logging.getLogger(__name__)
 

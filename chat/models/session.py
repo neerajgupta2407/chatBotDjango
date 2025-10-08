@@ -22,6 +22,7 @@ class Session(models.Model):
     last_activity = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = "chatbot_sessions_session"
         ordering = ["-last_activity"]
         indexes = [
             models.Index(fields=["-last_activity"]),

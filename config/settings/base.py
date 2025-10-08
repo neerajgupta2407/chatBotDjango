@@ -57,10 +57,10 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    "core",
+    "ai_providers",
     "clients",
-    "chat_sessions",
     "chat",
-    "files",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -74,7 +74,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "llms.middleware.DomainWhitelistMiddleware",
+    "core.middleware.DomainWhitelistMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -169,7 +169,7 @@ CORS_ALLOW_CREDENTIALS = True
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "llms.authentication.APIKeyAuthentication",
+        "core.authentication.APIKeyAuthentication",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",

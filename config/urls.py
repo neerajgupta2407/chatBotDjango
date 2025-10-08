@@ -34,9 +34,7 @@ def health_check(request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health", health_check, name="health-check"),
-    path("api/sessions/", include("chat_sessions.urls")),
     path("api/chat/", include("chat.urls")),
-    path("api/files/", include("files.urls")),
     path("api/clients/", include("clients.urls")),
     path("api/widget/config", WidgetConfigView.as_view(), name="widget-config"),
     # Widget files (served dynamically with client config)
