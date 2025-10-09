@@ -25,19 +25,22 @@ class ChatAPIEndpointsTestCase(TestCase):
         """Set up test client and data."""
         self.client_api = APIClient()
 
-        # Create a test client
+        # Create a test client with whitelisted domains
         self.test_client = Client.objects.create(
             name="Test Client",
             email="test@example.com",
             config={
                 "bot_name": "TestBot",
                 "primary_color": "#ff0000",
+                "whitelisted_domains": ["https://testserver"],
             },
         )
 
-        # Set API key header
+        # Set API key header and Origin header (required by middleware)
         self.api_key = self.test_client.api_key
-        self.client_api.credentials(HTTP_X_API_KEY=self.api_key)
+        self.client_api.credentials(
+            HTTP_X_API_KEY=self.api_key, HTTP_ORIGIN="https://testserver"
+        )
 
     def test_session_creation(self):
         """Test POST /api/chat/sessions/create."""
@@ -328,6 +331,7 @@ class ChatAPIEndpointsTestCase(TestCase):
         other_client = Client.objects.create(
             name="Other Client",
             email="other@example.com",
+            config={"whitelisted_domains": ["https://testserver"]},
         )
 
         # Create session for other client

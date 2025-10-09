@@ -3,6 +3,8 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.http import JsonResponse
 
+from clients.models import Client
+
 
 class DomainWhitelistMiddleware:
     """
@@ -19,8 +21,16 @@ class DomainWhitelistMiddleware:
         if any(request.path.startswith(path) for path in exempt_paths):
             return self.get_response(request)
 
-        # Get client from authentication (set by APIKeyAuthentication)
-        client = getattr(request, "auth", None)
+        # Manually authenticate the client from X-API-Key header
+        # (Middleware runs before view-level authentication)
+        api_key = request.headers.get("X-API-Key")
+        client = None
+
+        if api_key:
+            try:
+                client = Client.objects.get(api_key=api_key, is_active=True)
+            except Client.DoesNotExist:
+                pass  # Will be handled by view authentication
 
         # If no client authenticated, let it pass (will be handled by view permissions)
         if not client:
