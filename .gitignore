@@ -87,11 +87,18 @@ yarn-error.log*
 *.bak
 *.backup
 *.iml
+backups/
+*.sql
+*.sql.gz
 cheats.txt
 .claude
 Claude.md
 .python-version
 DJANGO_STARTUP_TEMPLATE.md
+
+# Deployment artifacts
+*.pid
+*.sock
 
 # Terraform
 .terraform/
