@@ -179,6 +179,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Custom User Model
+AUTH_USER_MODEL = "users.User"
+
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = (
     env("ALLOWED_ORIGINS", default="http://localhost:3000").split(",")
