@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Widget Test Page - JSON Data Methods</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .content h3 {
+            color: #764ba2;
+            margin: 30px 0 15px 0;
+            font-size: 1.4rem;
+        }
+
+        .content p {
+            color: #666;
+            line-height: 1.8;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            color: #24292e;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            color: #2196F3;
+        }
+
+        .data-display {
+            background: #fff;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .data-display h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .data-display pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .feature-card h3 {
+            color: #333;
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+        }
+
+        .feature-card p {
+            color: #666;
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Chatbot Widget Demo</h1>
+            <p>Testing Various Methods to Pass JSON Data</p>
+        </div>
+
+        <div class="content">
+            <h2>📊 Current Page Context Data</h2>
+            <p>
+                This demo page includes sample JSON data about campaigns, products, and user information.
+                The chatbot can answer questions about this data using natural language.
+            </p>
+
+            <div class="data-display">
+                <h4>📈 Marketing Campaigns Data</h4>
+                <pre id="campaignsData"></pre>
+            </div>
+
+            <div class="data-display">
+                <h4>🛒 Product Catalog Data</h4>
+                <pre id="productsData"></pre>
+            </div>
+
+            <div class="data-display">
+                <h4>👤 User Profile Data</h4>
+                <pre id="userProfileData"></pre>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2>🧪 Test Different JSON Data Methods</h2>
+
+            <h3>Method 1: Static pageData (Already Loaded)</h3>
+            <p>JSON data is passed via <code>window.ChatbotConfig.pageData</code> during initialization.</p>
+            <div class="info-box">
+                <strong>Try asking:</strong> "What campaigns are active?", "What's the total budget?",
+                "Which product is most expensive?", "What's in my cart?"
+            </div>
+
+            <h3>Method 2: Dynamic Data Updates</h3>
+            <p>Update the chatbot context dynamically with new data after page load.</p>
+            <div class="button-group">
+                <button class="btn" onclick="updateCampaignData()">
+                    🚀 Add New Campaign
+                </button>
+                <button class="btn" onclick="updateProductStock()">
+                    📦 Update Product Stock
+                </button>
+                <button class="btn" onclick="updateUserActivity()">
+                    ⏰ Update User Activity
+                </button>
+            </div>
+
+            <h3>Method 3: File Upload API</h3>
+            <p>Upload a JSON or CSV file directly through the widget's file upload feature.</p>
+            <div class="button-group">
+                <button class="btn" onclick="generateSampleJSON()">
+                    📄 Generate Sample JSON File
+                </button>
+                <button class="btn" onclick="generateSampleCSV()">
+                    📊 Generate Sample CSV File
+                </button>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Click the buttons above to download sample files,
+                then use the chatbot's upload feature to analyze them.
+            </div>
+
+            <h3>Method 4: Real-time Context Updates</h3>
+            <p>Simulate real-time data changes (e.g., cart updates, live analytics).</p>
+            <div class="button-group">
+                <button class="btn" onclick="addToCart()">
+                    🛒 Add Item to Cart
+                </button>
+                <button class="btn" onclick="simulateSale()">
+                    💰 Simulate Sale
+                </button>
+                <button class="btn" onclick="updateAnalytics()">
+                    📊 Update Analytics
+                </button>
+            </div>
+
+            <h3>Method 5: PostMessage API</h3>
+            <p>Send data to the widget iframe using the PostMessage API.</p>
+            <div class="button-group">
+                <button class="btn-secondary btn" onclick="sendPostMessage()">
+                    📨 Send Custom Data via PostMessage
+                </button>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2>💡 Suggested Questions to Ask the Chatbot</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>About Campaigns</h3>
+                    <p>• What's the total budget for all campaigns?<br>
+                    • Which campaigns are active?<br>
+                    • Show me paused campaigns</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>About Products</h3>
+                    <p>• What products are available?<br>
+                    • Which product is most expensive?<br>
+                    • What products are low on stock?</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>About User Data</h3>
+                    <p>• What's my account type?<br>
+                    • How many credits do I have?<br>
+                    • What items are in my cart?</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Analytics Questions</h3>
+                    <p>• What's the conversion rate?<br>
+                    • Show me today's revenue<br>
+                    • How many visitors today?</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialize Chatbot Configuration with pageData -->
+    <script>
+        // Sample data that will be available to the chatbot
+        const campaignsData = [
+            {
+                id: 1,
+                name: "Summer Sale 2024",
+                budget: 5000,
+                spent: 3200,
+                status: "active",
+                startDate: "2024-06-01",
+                endDate: "2024-08-31",
+                platform: "Google Ads"
+            },
+            {
+                id: 2,
+                name: "Holiday Campaign",
+                budget: 8000,
+                spent: 4500,
+                status: "active",
+                startDate: "2024-11-01",
+                endDate: "2024-12-31",
+                platform: "Facebook Ads"
+            },
+            {
+                id: 3,
+                name: "Spring Launch",
+                budget: 3000,
+                spent: 3000,
+                status: "paused",
+                startDate: "2024-03-01",
+                endDate: "2024-05-31",
+                platform: "Instagram"
+            }
+        ];
+
+        const productsData = [
+            { id: 101, name: "Wireless Headphones", price: 129.99, stock: 45, category: "Electronics" },
+            { id: 102, name: "Smart Watch", price: 299.99, stock: 23, category: "Electronics" },
+            { id: 103, name: "Laptop Bag", price: 49.99, stock: 120, category: "Accessories" },
+            { id: 104, name: "USB-C Cable", price: 19.99, stock: 200, category: "Accessories" },
+            { id: 105, name: "Bluetooth Speaker", price: 79.99, stock: 8, category: "Electronics" }
+        ];
+
+        const userProfileData = {
+            userId: 12345,
+            email: "demo@example.com",
+            accountType: "premium",
+            region: "US-West",
+            credits: 1500,
+            memberSince: "2023-01-15",
+            lastLogin: new Date().toISOString(),
+            permissions: ["view", "edit", "analytics"],
+            cart: {
+                items: [
+                    { productId: 101, quantity: 1, price: 129.99 },
+                    { productId: 103, quantity: 2, price: 49.99 }
+                ],
+                total: 229.97,
+                itemCount: 3
+            }
+        };
+
+        // Display data on page
+        document.getElementById('campaignsData').textContent = JSON.stringify(campaignsData, null, 2);
+        document.getElementById('productsData').textContent = JSON.stringify(productsData, null, 2);
+        document.getElementById('userProfileData').textContent = JSON.stringify(userProfileData, null, 2);
+
+        // Configure chatbot with initial data
+        window.ChatbotConfig = {
+            apiKey: 'cb_8cAu6o8BppmyO0zIt57-irxzCGzcxLhYJn_2MVpZ7bRrpHHYClXsVF0NDy69aXwu',
+            userIdentifier: 'demo-user@example.com',
+            pageData: {
+                campaigns: campaignsData,
+                products: productsData,
+                userProfile: userProfileData,
+                pageContext: {
+                    url: window.location.href,
+                    title: document.title,
+                    timestamp: new Date().toISOString()
+                }
+            }
+        };
+
+        // Method 2: Dynamic data updates
+        function updateCampaignData() {
+            const newCampaign = {
+                id: 4,
+                name: "Black Friday Mega Sale",
+                budget: 15000,
+                spent: 0,
+                status: "active",
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: "2024-11-30",
+                platform: "Multi-channel"
+            };
+
+            campaignsData.push(newCampaign);
+            window.ChatbotConfig.pageData.campaigns = campaignsData;
+            document.getElementById('campaignsData').textContent = JSON.stringify(campaignsData, null, 2);
+            alert('✅ New campaign added! Ask the chatbot: "What\'s the latest campaign?"');
+        }
+
+        function updateProductStock() {
+            productsData[4].stock = 50; // Update Bluetooth Speaker stock
+            window.ChatbotConfig.pageData.products = productsData;
+            document.getElementById('productsData').textContent = JSON.stringify(productsData, null, 2);
+            alert('✅ Product stock updated! Ask: "What\'s the stock for Bluetooth Speaker?"');
+        }
+
+        function updateUserActivity() {
+            userProfileData.lastLogin = new Date().toISOString();
+            userProfileData.credits += 500;
+            window.ChatbotConfig.pageData.userProfile = userProfileData;
+            document.getElementById('userProfileData').textContent = JSON.stringify(userProfileData, null, 2);
+            alert('✅ User activity updated! Ask: "How many credits do I have now?"');
+        }
+
+        // Method 3: Generate sample files for upload
+        function generateSampleJSON() {
+            const sampleData = {
+                transactions: [
+                    { id: 1, date: "2024-10-01", amount: 250.50, status: "completed", customer: "John Doe" },
+                    { id: 2, date: "2024-10-02", amount: 180.00, status: "completed", customer: "Jane Smith" },
+                    { id: 3, date: "2024-10-03", amount: 420.75, status: "pending", customer: "Bob Johnson" },
+                    { id: 4, date: "2024-10-04", amount: 95.00, status: "completed", customer: "Alice Brown" }
+                ],
+                summary: {
+                    totalTransactions: 4,
+                    totalRevenue: 946.25,
+                    averageTransaction: 236.56
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sample-transactions.json';
+            a.click();
+            alert('📄 JSON file downloaded! Upload it using the chatbot\'s file upload feature.');
+        }
+
+        function generateSampleCSV() {
+            const csvContent = `Name,Age,Department,Salary,StartDate
+John Doe,32,Engineering,95000,2020-01-15
+Jane Smith,28,Marketing,75000,2021-03-22
+Bob Johnson,45,Sales,82000,2018-07-10
+Alice Brown,35,Engineering,105000,2019-11-05
+Charlie Wilson,29,Design,68000,2022-02-14`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sample-employees.csv';
+            a.click();
+            alert('📊 CSV file downloaded! Upload it using the chatbot\'s file upload feature.');
+        }
+
+        // Method 4: Real-time updates
+        function addToCart() {
+            const newItem = { productId: 102, quantity: 1, price: 299.99 };
+            userProfileData.cart.items.push(newItem);
+            userProfileData.cart.total += newItem.price;
+            userProfileData.cart.itemCount += 1;
+            window.ChatbotConfig.pageData.userProfile = userProfileData;
+            document.getElementById('userProfileData').textContent = JSON.stringify(userProfileData, null, 2);
+            alert('🛒 Smart Watch added to cart! Ask: "What\'s in my cart?"');
+        }
+
+        function simulateSale() {
+            const analytics = window.ChatbotConfig.pageData.analytics || {};
+            analytics.todaysSales = (analytics.todaysSales || 0) + 1;
+            analytics.revenue = (analytics.revenue || 0) + 149.99;
+            analytics.lastSaleTime = new Date().toISOString();
+            window.ChatbotConfig.pageData.analytics = analytics;
+            alert('💰 Sale recorded! Ask: "How many sales today?"');
+        }
+
+        function updateAnalytics() {
+            window.ChatbotConfig.pageData.analytics = {
+                visitors: 1247,
+                pageViews: 3891,
+                conversionRate: 3.8,
+                revenue: 12459.87,
+                date: new Date().toISOString().split('T')[0]
+            };
+            alert('📊 Analytics updated! Ask: "What\'s today\'s conversion rate?"');
+        }
+
+        // Method 5: PostMessage API
+        function sendPostMessage() {
+            const customData = {
+                notification: "VIP customer online",
+                customerTier: "Gold",
+                specialOffers: [
+                    { code: "VIP20", discount: "20%", expires: "2024-12-31" },
+                    { code: "GOLD15", discount: "15%", expires: "2024-11-30" }
+                ]
+            };
+
+            // Find the chatbot iframe
+            const iframe = document.querySelector('iframe[src*="chatbot"]');
+            if (iframe) {
+                iframe.contentWindow.postMessage({
+                    type: 'update_context',
+                    data: customData
+                }, '*');
+                alert('📨 Custom data sent via PostMessage! Ask: "What special offers are available?"');
+            } else {
+                alert('⚠️ Chatbot iframe not found. Make sure the widget is loaded.');
+            }
+        }
+
+        // Listen for widget events
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'widget_ready') {
+                console.log('✅ Chatbot widget is ready!');
+            } else if (event.data.type === 'session_created') {
+                console.log('✅ Session created:', event.data.sessionId);
+            }
+        });
+    </script>
+
+<!--    &lt;!&ndash; Chatbot Widget &ndash;&gt;-->
+<!--    <script src="http://127.0.0.1:8001/widget/chatbot.js?v=3" data-api-key="cb_RRSaEDFEoU8T3peypOo6TsBfZoQ5odFHtkapXYB-LBmDzE6q2JGJLDLwtqQjRdWR"></script>-->
+
+    <!-- Chatbot Widget --><script src="https://cb.hexbolttechnologies.in/widget/chatbot.js" data-api-key="cb_8cAu6o8BppmyO0zIt57-irxzCGzcxLhYJn_2MVpZ7bRrpHHYClXsVF0NDy69aXwu"></script>
+
+</body>
+</html>

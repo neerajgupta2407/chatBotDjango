@@ -21,6 +21,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from django.utils import timezone
+from django.views.generic import TemplateView
 
 from clients.views import WidgetConfigView, WidgetHTMLView, WidgetJavaScriptView
 
@@ -39,6 +40,8 @@ urlpatterns = [
     # Widget files (served dynamically with client config)
     path("widget/chatbot.js", WidgetJavaScriptView.as_view(), name="widget-js"),
     path("widget/chatbot.html", WidgetHTMLView.as_view(), name="widget-html"),
+    # Demo page
+    path("demo", TemplateView.as_view(template_name="demo.html"), name="demo"),
 ]
 
 # Serve static and media files in development
