@@ -402,7 +402,7 @@ class WidgetEmbedCodeViewTestCase(TestCase):
         # Assert
         html = response.data["html"]
         self.assertIn(self.client_obj.api_key, html)
-        self.assertIn("apiKey=", html)
+        self.assertIn("data-api-key=", html)
 
     def test_embed_code_contains_script_tag(self):
         """Should include script tag in embed code"""

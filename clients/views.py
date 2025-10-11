@@ -141,10 +141,10 @@ class WidgetEmbedCodeView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Generate embed code
+        # Generate embed code with data-api-key attribute
         base_url = request.build_absolute_uri("/")[:-1]  # Remove trailing slash
         embed_code = f"""<!-- Chatbot Widget -->
-<script src="{base_url}/widget/chatbot.js?apiKey={client.api_key}"></script>"""
+<script src="{base_url}/widget/chatbot.js" data-api-key="{client.api_key}"></script>"""
 
         return Response(
             {
