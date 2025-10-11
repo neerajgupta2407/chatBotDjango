@@ -61,6 +61,14 @@ LOCAL_APPS = [
     "ai_providers",
     "clients",
     "chat",
+    # New apps for enterprise features
+    "users",
+    "assistants",
+    "knowledge_base",
+    "workflows",
+    "prompts",
+    "files",
+    "integrations",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -100,12 +108,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Support both SQLite (development) and PostgreSQL (production with vector search)
+DATABASE_URL = env("DATABASE_URL", default="sqlite:///db.sqlite3")
+
+if DATABASE_URL.startswith("postgresql"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME", default="chatbot_db"),
+            "USER": env("DB_USER", default="chatbot_user"),
+            "PASSWORD": env("DB_PASSWORD", default=""),
+            "HOST": env("DB_HOST", default="localhost"),
+            "PORT": env("DB_PORT", default="5432"),
+            "CONN_MAX_AGE": 600,  # Connection pooling
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
