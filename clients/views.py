@@ -1,7 +1,9 @@
 import logging
 
+from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -167,6 +169,7 @@ class WidgetJavaScriptView(APIView):
         context = {
             "api_key": api_key or "",
             "api_base_url": request.build_absolute_uri("/")[:-1],
+            "WIDGET_BASE_URL": settings.WIDGET_BASE_URL,
             "bot_name": "AI Assistant",
             "bot_color": "#667eea",
             "bot_msg_bg_color": "#667eea",
@@ -211,3 +214,15 @@ class WidgetJavaScriptView(APIView):
         # Add cache control headers
         response["Cache-Control"] = "public, max-age=300"  # Cache for 5 minutes
         return response
+
+
+class WidgetHTMLView(TemplateView):
+    """Serve chatbot.html with WIDGET_BASE_URL injected"""
+
+    template_name = "widget/chatbot.html"
+    content_type = "text/html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["WIDGET_BASE_URL"] = settings.WIDGET_BASE_URL
+        return context

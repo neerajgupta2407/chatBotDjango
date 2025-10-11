@@ -210,6 +210,9 @@ CLAUDE_BOT_NAME = env("CLAUDE_BOT_NAME", default="Claude Assistant")
 OPENAI_BOT_NAME = env("OPENAI_BOT_NAME", default="GPT Assistant")
 DUMMY_BOT_NAME = env("DUMMY_BOT_NAME", default="Dummy Assistant")
 
+# Widget Configuration
+WIDGET_BASE_URL = env("WIDGET_BASE_URL", default="http://localhost:8000")
+
 # Session Configuration
 CHAT_SESSION_TIMEOUT = 30 * 60  # 30 minutes in seconds
 

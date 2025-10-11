@@ -1,3 +1,6 @@
+// Backend-provided configuration
+const WIDGET_BASE_URL = "{{ WIDGET_BASE_URL }}";
+
 class ClaudeChatWidget {
     constructor() {
         this.sessionId = null;
@@ -38,8 +41,15 @@ class ClaudeChatWidget {
     }
 
     getApiBaseUrl() {
-        // Get API base URL from current location or configuration
+        // Use backend-provided base URL if available (from chatbot.html)
+        if (window.WIDGET_CONFIG && window.WIDGET_CONFIG.baseUrl) {
+            console.log('Using backend-provided base URL:', window.WIDGET_CONFIG.baseUrl);
+            return window.WIDGET_CONFIG.baseUrl;
+        }
+
+        // Fallback: Get API base URL from current location
         const currentHost = window.location.origin;
+        console.warn('No backend base URL found, using fallback:', currentHost);
         // Remove /widget path if present
         return currentHost.replace('/widget', '');
     }
@@ -1080,15 +1090,15 @@ function initializeIframeLoader() {
         return;
     }
 
-    // Get the base URL from the script src
-    const scriptSrc = scriptTag.src;
-    const baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/static'));
+    // Use backend-provided base URL
+    const baseUrl = WIDGET_BASE_URL;
+    console.log('Using backend-provided WIDGET_BASE_URL:', baseUrl);
 
     // Extract userIdentifier from script src URL if provided
     let userIdentifier = null;
-    if (scriptSrc) {
+    if (scriptTag && scriptTag.src) {
         try {
-            const scriptUrl = new URL(scriptSrc);
+            const scriptUrl = new URL(scriptTag.src);
             userIdentifier = scriptUrl.searchParams.get('userIdentifier');
         } catch (e) {
             console.warn('Failed to parse script URL:', e);

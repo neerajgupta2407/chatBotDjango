@@ -38,8 +38,15 @@ class ClaudeChatWidget {
     }
 
     getApiBaseUrl() {
-        // Get API base URL from current location or configuration
+        // Use backend-provided base URL if available (from chatbot.html)
+        if (window.WIDGET_CONFIG && window.WIDGET_CONFIG.baseUrl) {
+            console.log('Using backend-provided base URL:', window.WIDGET_CONFIG.baseUrl);
+            return window.WIDGET_CONFIG.baseUrl;
+        }
+
+        // Fallback: Get API base URL from current location
         const currentHost = window.location.origin;
+        console.warn('No backend base URL found, using fallback:', currentHost);
         // Remove /widget path if present
         return currentHost.replace('/widget', '');
     }
@@ -1082,7 +1089,23 @@ function initializeIframeLoader() {
 
     // Get the base URL from the script src
     const scriptSrc = scriptTag.src;
-    const baseUrl = scriptSrc.substring(0, scriptSrc.lastIndexOf('/static'));
+    let baseUrl;
+
+    // Extract base URL from script src (e.g., http://localhost:8000/widget/chatbot.js -> http://localhost:8000)
+    if (scriptSrc.includes('/static/widget/chatbot.js')) {
+        baseUrl = scriptSrc.substring(0, scriptSrc.indexOf('/static/widget/chatbot.js'));
+    } else if (scriptSrc.includes('/widget/chatbot.js')) {
+        baseUrl = scriptSrc.substring(0, scriptSrc.indexOf('/widget/chatbot.js'));
+    } else {
+        // Fallback: try to extract origin from URL
+        try {
+            const url = new URL(scriptSrc);
+            baseUrl = url.origin;
+        } catch (e) {
+            console.error('Failed to extract base URL from script src:', scriptSrc);
+            return;
+        }
+    }
 
     // Extract userIdentifier from script src URL if provided
     let userIdentifier = null;

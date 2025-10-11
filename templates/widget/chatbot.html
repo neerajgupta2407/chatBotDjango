@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatbot Widget</title>
     <script>
+        // Global widget configuration from backend
+        window.WIDGET_CONFIG = {
+            baseUrl: "{{ WIDGET_BASE_URL }}"
+        };
+
         // Apply configuration from URL parameters immediately to prevent color flash
         (function() {
             try {
