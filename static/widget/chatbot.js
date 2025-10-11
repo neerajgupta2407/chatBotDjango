@@ -7,7 +7,7 @@ class ClaudeChatWidget {
         this.isMinimized = true;
         this.messageQueue = [];
         this.isProcessing = false;
-        this.currentProvider = 'claude';
+        this.currentProvider = 'openai';
         this.currentProviderName = 'Claude Assistant';
         this.userIdentifier = this.getUserIdentifier();
 
@@ -396,13 +396,13 @@ class ClaudeChatWidget {
     }
 
     handlePageData(data) {
-        // Store page data in config for context
-        this.config.pageData = data.pageInfo;
+        // Store dynamic data as jsonData for proper CSV conversion and analysis
+        this.config.jsonData = data.pageInfo;
 
         // Log for debugging
-        console.log('Page data received:', data.pageInfo);
+        console.log('Dynamic data received and stored as jsonData:', data.pageInfo);
 
-        // Update session with page data
+        // Update session with jsonData
         if (this.sessionId) {
             const headers = {
                 'Content-Type': 'application/json',
@@ -416,7 +416,7 @@ class ClaudeChatWidget {
                 headers: headers,
                 body: JSON.stringify({ config: this.config })
             }).catch(error => {
-                console.error('Failed to update session with page data:', error);
+                console.error('Failed to update session with jsonData:', error);
             });
         }
     }
@@ -946,7 +946,7 @@ class ClaudeChatWidget {
 
         // Build the config object with proper structure
         const messageConfig = {
-            aiProvider: this.config.aiProvider || this.currentProvider || 'claude'
+            aiProvider: this.config.aiProvider || this.currentProvider || 'dummy'
         };
 
         // Add pageContext if available
@@ -959,14 +959,20 @@ class ClaudeChatWidget {
             messageConfig.customInstructions = this.config.customInstructions;
         }
 
-        // Add jsonData if available
+        // Add jsonData if available (dynamic structured data like campaigns, products, etc.)
+        // This data will be automatically converted to CSV format for efficient analysis
+        // jsonData takes priority over pageData for the actual data payload
         if (this.config.jsonData) {
-            messageConfig.jsonData = this.config.jsonData;
-        }
-
-        // Add pageData if available (structured data like campaigns, products, etc.)
-        if (this.config.pageData) {
-            messageConfig.pageData = this.config.pageData;
+            // Clone jsonData and remove pageContext to avoid duplication
+            // (pageContext is extracted separately and sent as a top-level field)
+            const cleanJsonData = { ...this.config.jsonData };
+            delete cleanJsonData.pageContext;
+            messageConfig.jsonData = cleanJsonData;
+        } else if (this.config.pageData) {
+            // Fallback: if only pageData is provided, send it as jsonData for proper CSV conversion
+            const cleanPageData = { ...this.config.pageData };
+            delete cleanPageData.pageContext;
+            messageConfig.jsonData = cleanPageData;
         }
 
         // Add any other config properties (botColor, botName, etc.)
@@ -1159,17 +1165,20 @@ function initializeIframeLoader() {
     // Append to body
     document.body.appendChild(iframe);
 
-    // Listen for widget ready message, then send pageData if available
+    // Listen for widget ready message, then send dynamic data if available
     window.addEventListener('message', function handleWidgetReady(event) {
         if (event.data.type === 'widget_ready') {
-            console.log('ClaudeChatWidget: Widget ready, sending pageData');
+            console.log('ClaudeChatWidget: Widget ready, sending dynamic data');
 
-            // Send pageData to iframe if available
-            if (chatbotConfig.pageData) {
+            // Send dynamic data to iframe if available (stored as jsonData for CSV conversion)
+            // Priority: jsonData > pageData (for backwards compatibility)
+            const dynamicData = chatbotConfig.jsonData || chatbotConfig.pageData;
+            if (dynamicData) {
                 iframe.contentWindow.postMessage({
                     type: 'page_data',
-                    pageInfo: chatbotConfig.pageData
+                    pageInfo: dynamicData
                 }, '*');
+                console.log('ClaudeChatWidget: Sent dynamic data as jsonData:', dynamicData);
             }
         }
     });
