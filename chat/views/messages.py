@@ -50,6 +50,7 @@ class ChatMessageView(APIView):
             # Update session config if provided
             if config:
                 session.config = {**session.config, **config}
+                session.save(update_fields=["config"])
 
             # Save user message to Message model
             user_msg_obj = Message.objects.create(

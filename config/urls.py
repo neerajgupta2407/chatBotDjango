@@ -21,6 +21,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from django.utils import timezone
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.generic import TemplateView
 
 from clients.views import WidgetConfigView, WidgetJavaScriptView
@@ -41,8 +42,10 @@ urlpatterns = [
     path("widget/chatbot.js", WidgetJavaScriptView.as_view(), name="widget-js"),
     path(
         "widget/chatbot.html",
-        TemplateView.as_view(
-            template_name="widget/chatbot.html", content_type="text/html"
+        xframe_options_exempt(
+            TemplateView.as_view(
+                template_name="widget/chatbot.html", content_type="text/html"
+            )
         ),
         name="widget-html",
     ),

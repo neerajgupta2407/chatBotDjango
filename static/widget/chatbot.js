@@ -296,13 +296,16 @@ class ClaudeChatWidget {
 
             if (configParam) {
                 try {
-                    this.config = JSON.parse(decodeURIComponent(configParam));
+                    const urlConfig = JSON.parse(decodeURIComponent(configParam));
+                    // Merge with existing config, preserving any previously set values
+                    this.config = { ...this.config, ...urlConfig };
+                    console.log('Config loaded from URL:', this.config);
                 } catch (e) {
                     console.warn('Invalid config parameter:', e);
                 }
             }
 
-            // Create session
+            // Create session with config including pageData
             const headers = {
                 'Content-Type': 'application/json',
             };
@@ -310,13 +313,17 @@ class ClaudeChatWidget {
                 headers['X-API-Key'] = this.apiKey;
             }
 
+            const sessionPayload = {
+                config: this.config,
+                user_identifier: this.userIdentifier
+            };
+
+            console.log('Creating session with payload:', sessionPayload);
+
             const response = await fetch(`${this.apiBaseUrl}/api/chat/sessions/create`, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({
-                    config: this.config,
-                    user_identifier: this.userIdentifier
-                })
+                body: JSON.stringify(sessionPayload)
             });
 
             if (!response.ok) {
@@ -325,6 +332,8 @@ class ClaudeChatWidget {
 
             const data = await response.json();
             this.sessionId = data.sessionId;
+
+            console.log('Session created:', this.sessionId);
 
             // Apply bot configuration if received
             if (data.config) {
@@ -452,14 +461,17 @@ class ClaudeChatWidget {
                 headers['X-API-Key'] = this.apiKey;
             }
 
+            // Build the proper request payload matching message_request.json format
+            const requestPayload = {
+                sessionId: this.sessionId,
+                message: message,
+                config: this.buildMessageConfig()
+            };
+
             const response = await fetch(`${this.apiBaseUrl}/api/chat/messages/send`, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({
-                    sessionId: this.sessionId,
-                    message: message,
-                    config: this.config
-                })
+                body: JSON.stringify(requestPayload)
             });
 
             if (!response.ok) {
@@ -919,6 +931,116 @@ class ClaudeChatWidget {
         // Update powered by text
         this.elements.poweredBy.textContent = `Powered by ${poweredBy}`;
     }
+
+    buildMessageConfig() {
+        // Build config object matching message_request.json format
+        // Extract pageContext information from current page or config
+        const pageContext = this.extractPageContext();
+
+        // Build the config object with proper structure
+        const messageConfig = {
+            aiProvider: this.config.aiProvider || this.currentProvider || 'claude'
+        };
+
+        // Add pageContext if available
+        if (pageContext && Object.keys(pageContext).length > 0) {
+            messageConfig.pageContext = pageContext;
+        }
+
+        // Add customInstructions if available
+        if (this.config.customInstructions) {
+            messageConfig.customInstructions = this.config.customInstructions;
+        }
+
+        // Add jsonData if available
+        if (this.config.jsonData) {
+            messageConfig.jsonData = this.config.jsonData;
+        }
+
+        // Add pageData if available (structured data like campaigns, products, etc.)
+        if (this.config.pageData) {
+            messageConfig.pageData = this.config.pageData;
+        }
+
+        // Add any other config properties (botColor, botName, etc.)
+        // These are used for UI configuration but not for context building
+        if (this.config.botColor) {
+            messageConfig.botColor = this.config.botColor;
+        }
+        if (this.config.botMsgBgColor) {
+            messageConfig.botMsgBgColor = this.config.botMsgBgColor;
+        }
+        if (this.config.botName) {
+            messageConfig.botName = this.config.botName;
+        }
+        if (this.config.botIcon) {
+            messageConfig.botIcon = this.config.botIcon;
+        }
+        if (this.config.poweredBy) {
+            messageConfig.poweredBy = this.config.poweredBy;
+        }
+
+        return messageConfig;
+    }
+
+    extractPageContext() {
+        // Try to get pageContext from config first
+        if (this.config.pageContext) {
+            return this.config.pageContext;
+        }
+
+        // If pageData has pageContext nested inside, extract it
+        if (this.config.pageData && this.config.pageData.pageContext) {
+            return this.config.pageData.pageContext;
+        }
+
+        // Build basic pageContext from current page
+        try {
+            return {
+                url: window.location.href,
+                title: document.title,
+                hostname: window.location.hostname,
+                pathname: window.location.pathname,
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString(),
+                referrer: document.referrer || '',
+                pageContent: this.extractPageContent(),
+                description: this.extractMetaDescription()
+            };
+        } catch (e) {
+            console.warn('Failed to extract page context:', e);
+            return {};
+        }
+    }
+
+    extractPageContent() {
+        // Extract visible text content from page (limited to avoid too much data)
+        try {
+            const body = document.body;
+            if (!body) return '';
+
+            // Get text content, clean it up, and limit length
+            let text = body.innerText || body.textContent || '';
+            text = text.replace(/\s+/g, ' ').trim();
+
+            // Limit to first 2000 characters
+            return text.substring(0, 2000);
+        } catch (e) {
+            console.warn('Failed to extract page content:', e);
+            return '';
+        }
+    }
+
+    extractMetaDescription() {
+        // Extract meta description from page
+        try {
+            const metaDescription = document.querySelector('meta[name="description"]');
+            return metaDescription ? metaDescription.getAttribute('content') : '';
+        } catch (e) {
+            console.warn('Failed to extract meta description:', e);
+            return '';
+        }
+    }
 }
 
 // Check if we're in the parent page or iframe
@@ -973,6 +1095,9 @@ function initializeIframeLoader() {
         }
     }
 
+    // Get ChatbotConfig from parent window if available
+    const chatbotConfig = window.ChatbotConfig || {};
+
     // Create iframe container
     const iframe = document.createElement('iframe');
     iframe.id = 'chatbot-iframe';
@@ -993,18 +1118,40 @@ function initializeIframeLoader() {
         apiKey: apiKey
     });
 
-    // Add userIdentifier if provided
-    if (userIdentifier) {
-        iframeParams.set('userIdentifier', userIdentifier);
+    // Add userIdentifier if provided (from config or URL)
+    const finalUserIdentifier = chatbotConfig.userIdentifier || userIdentifier;
+    if (finalUserIdentifier) {
+        iframeParams.set('userIdentifier', finalUserIdentifier);
+    }
+
+    // Add config as URL parameter if available
+    if (Object.keys(chatbotConfig).length > 0) {
+        // Encode config as JSON string
+        iframeParams.set('config', encodeURIComponent(JSON.stringify(chatbotConfig)));
     }
 
     // Set iframe source to chatbot.html
-    iframe.src = `${baseUrl}/static/widget/chatbot.html?${iframeParams.toString()}`;
+    iframe.src = `${baseUrl}/widget/chatbot.html?${iframeParams.toString()}`;
 
     // Append to body
     document.body.appendChild(iframe);
 
-    console.log('ClaudeChatWidget: Iframe loaded with API key');
+    // Listen for widget ready message, then send pageData if available
+    window.addEventListener('message', function handleWidgetReady(event) {
+        if (event.data.type === 'widget_ready') {
+            console.log('ClaudeChatWidget: Widget ready, sending pageData');
+
+            // Send pageData to iframe if available
+            if (chatbotConfig.pageData) {
+                iframe.contentWindow.postMessage({
+                    type: 'page_data',
+                    pageInfo: chatbotConfig.pageData
+                }, '*');
+            }
+        }
+    });
+
+    console.log('ClaudeChatWidget: Iframe loaded with API key and config', chatbotConfig);
 }
 
 // Initialize the widget when DOM is loaded
