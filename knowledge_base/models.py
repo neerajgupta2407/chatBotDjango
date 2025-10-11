@@ -6,7 +6,20 @@ Requires PostgreSQL with pgvector extension.
 import uuid
 
 from django.db import models
-from pgvector.django import VectorField
+
+# Conditional import for pgvector - only available with PostgreSQL
+try:
+    from pgvector.django import VectorField
+
+    def get_vector_field():
+        return VectorField(dimensions=1536)
+
+except ImportError:
+    # Fallback for testing with SQLite
+    VectorField = None
+
+    def get_vector_field():
+        return models.BinaryField(null=True, blank=True)
 
 
 class Collection(models.Model):
@@ -117,7 +130,8 @@ class DocumentChunk(models.Model):
 
     # Vector embedding (1536 dimensions for OpenAI ada-002)
     # This enables semantic search using cosine similarity
-    embedding = VectorField(dimensions=1536)
+    # Use BinaryField as fallback when VectorField is not available (testing)
+    embedding = get_vector_field()
 
     # Metadata
     tokens = models.IntegerField()
