@@ -21,8 +21,6 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from django.utils import timezone
-from django.views.decorators.clickjacking import xframe_options_exempt
-from django.views.generic import TemplateView
 
 from clients.views import WidgetConfigView, WidgetHTMLView, WidgetJavaScriptView
 
@@ -40,11 +38,7 @@ urlpatterns = [
     path("api/widget/config", WidgetConfigView.as_view(), name="widget-config"),
     # Widget files (served dynamically with client config)
     path("widget/chatbot.js", WidgetJavaScriptView.as_view(), name="widget-js"),
-    path(
-        "widget/chatbot.html",
-        xframe_options_exempt(WidgetHTMLView.as_view()),
-        name="widget-html",
-    ),
+    path("widget/chatbot.html", WidgetHTMLView.as_view(), name="widget-html"),
 ]
 
 # Serve static and media files in development
