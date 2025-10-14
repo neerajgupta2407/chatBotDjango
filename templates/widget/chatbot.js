@@ -399,13 +399,13 @@ class ClaudeChatWidget {
     }
 
     handlePageData(data) {
-        // Store page data in config for context
-        this.config.pageData = data.pageInfo;
+        // Store dynamic data as jsonData for proper CSV conversion and analysis
+        this.config.jsonData = data.pageInfo;
 
         // Log for debugging
-        console.log('Page data received:', data.pageInfo);
+        console.log('Dynamic data received and stored as jsonData:', data.pageInfo);
 
-        // Update session with page data
+        // Update session with jsonData
         if (this.sessionId) {
             const headers = {
                 'Content-Type': 'application/json',
@@ -419,7 +419,7 @@ class ClaudeChatWidget {
                 headers: headers,
                 body: JSON.stringify({ config: this.config })
             }).catch(error => {
-                console.error('Failed to update session with page data:', error);
+                console.error('Failed to update session with jsonData:', error);
             });
         }
     }
@@ -1134,29 +1134,61 @@ function initializeIframeLoader() {
         iframeParams.set('userIdentifier', finalUserIdentifier);
     }
 
-    // Add config as URL parameter if available
-    if (Object.keys(chatbotConfig).length > 0) {
-        // Encode config as JSON string
-        iframeParams.set('config', encodeURIComponent(JSON.stringify(chatbotConfig)));
-    }
-
-    // Set iframe source to chatbot.html
+    // Set iframe source to chatbot.html (all config will be sent via postMessage)
     iframe.src = `${baseUrl}/widget/chatbot.html?${iframeParams.toString()}`;
 
     // Append to body
     document.body.appendChild(iframe);
 
-    // Listen for widget ready message, then send pageData if available
+    // Listen for widget ready message, then send all configuration via postMessage
     window.addEventListener('message', function handleWidgetReady(event) {
         if (event.data.type === 'widget_ready') {
-            console.log('ClaudeChatWidget: Widget ready, sending pageData');
+            console.log('ClaudeChatWidget: Widget ready, sending full configuration via postMessage');
 
-            // Send pageData to iframe if available
-            if (chatbotConfig.pageData) {
+            // Send all UI configuration (colors, branding, etc.)
+            const uiConfig = {};
+            const uiKeys = ['botColor', 'botMsgBgColor', 'botName', 'botIcon', 'poweredBy', 'aiProvider', 'customInstructions'];
+
+            for (const key of uiKeys) {
+                if (chatbotConfig[key]) {
+                    uiConfig[key] = chatbotConfig[key];
+                }
+            }
+
+            if (Object.keys(uiConfig).length > 0) {
+                iframe.contentWindow.postMessage({
+                    type: 'configure',
+                    data: uiConfig
+                }, '*');
+                console.log('ClaudeChatWidget: Sent UI configuration');
+            }
+
+            // Send dynamic data separately (stored as jsonData for CSV conversion)
+            // Priority: jsonData > pageData (for backwards compatibility)
+            const dynamicData = chatbotConfig.jsonData || chatbotConfig.pageData;
+            if (dynamicData) {
                 iframe.contentWindow.postMessage({
                     type: 'page_data',
-                    pageInfo: chatbotConfig.pageData
+                    pageInfo: dynamicData
                 }, '*');
+                console.log('ClaudeChatWidget: Sent dynamic data');
+            }
+
+            // Send any other config keys that weren't handled above
+            const otherConfig = {};
+            for (const key in chatbotConfig) {
+                if (!['jsonData', 'pageData', 'userIdentifier'].includes(key) &&
+                    !uiKeys.includes(key)) {
+                    otherConfig[key] = chatbotConfig[key];
+                }
+            }
+
+            if (Object.keys(otherConfig).length > 0) {
+                iframe.contentWindow.postMessage({
+                    type: 'configure',
+                    data: otherConfig
+                }, '*');
+                console.log('ClaudeChatWidget: Sent additional config');
             }
         }
     });
