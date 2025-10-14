@@ -1153,10 +1153,20 @@ function initializeIframeLoader() {
         iframeParams.set('userIdentifier', finalUserIdentifier);
     }
 
-    // Add config as URL parameter if available
-    if (Object.keys(chatbotConfig).length > 0) {
-        // Encode config as JSON string
-        iframeParams.set('config', encodeURIComponent(JSON.stringify(chatbotConfig)));
+    // Add only UI config to URL parameter (exclude large data payloads)
+    // Data payloads (jsonData, pageData) will be sent via postMessage
+    const uiConfig = {};
+    const configKeys = ['botColor', 'botMsgBgColor', 'botName', 'botIcon', 'poweredBy', 'aiProvider', 'customInstructions'];
+
+    for (const key of configKeys) {
+        if (chatbotConfig[key]) {
+            uiConfig[key] = chatbotConfig[key];
+        }
+    }
+
+    // Only add config if there's UI configuration
+    if (Object.keys(uiConfig).length > 0) {
+        iframeParams.set('config', encodeURIComponent(JSON.stringify(uiConfig)));
     }
 
     // Set iframe source to chatbot.html
@@ -1168,7 +1178,7 @@ function initializeIframeLoader() {
     // Listen for widget ready message, then send dynamic data if available
     window.addEventListener('message', function handleWidgetReady(event) {
         if (event.data.type === 'widget_ready') {
-            console.log('ClaudeChatWidget: Widget ready, sending dynamic data');
+            console.log('ClaudeChatWidget: Widget ready, sending full configuration');
 
             // Send dynamic data to iframe if available (stored as jsonData for CSV conversion)
             // Priority: jsonData > pageData (for backwards compatibility)
@@ -1178,7 +1188,25 @@ function initializeIframeLoader() {
                     type: 'page_data',
                     pageInfo: dynamicData
                 }, '*');
-                console.log('ClaudeChatWidget: Sent dynamic data as jsonData:', dynamicData);
+                console.log('ClaudeChatWidget: Sent dynamic data as jsonData');
+            }
+
+            // Send any additional config that wasn't in the URL (for completeness)
+            const additionalConfig = {};
+            for (const key in chatbotConfig) {
+                // Skip data payloads and keys already sent in URL
+                if (!['jsonData', 'pageData', 'userIdentifier'].includes(key) &&
+                    !uiConfig.hasOwnProperty(key)) {
+                    additionalConfig[key] = chatbotConfig[key];
+                }
+            }
+
+            if (Object.keys(additionalConfig).length > 0) {
+                iframe.contentWindow.postMessage({
+                    type: 'configure',
+                    data: additionalConfig
+                }, '*');
+                console.log('ClaudeChatWidget: Sent additional config');
             }
         }
     });
