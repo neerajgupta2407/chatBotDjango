@@ -400,10 +400,10 @@ class ChatBotWidget {
 
     handlePageData(data) {
         // Store dynamic data as jsonData for proper CSV conversion and analysis
-        this.config.jsonData = data.pageInfo;
+        this.config.jsonData = data;
 
         // Log for debugging
-        console.log('Dynamic data received and stored as jsonData:', data.pageInfo);
+        console.log('Dynamic data received and stored as jsonData:', data);
 
         // Update session with jsonData
         if (this.sessionId) {
@@ -1171,7 +1171,7 @@ function initializeIframeLoader() {
             if (dynamicData) {
                 iframe.contentWindow.postMessage({
                     type: 'page_data',
-                    pageInfo: dynamicData
+                    data: dynamicData
                 }, '*');
                 console.log('ChatBotWidget: Sent dynamic data');
             }
