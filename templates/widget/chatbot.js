@@ -1,7 +1,7 @@
 // Backend-provided configuration
 const WIDGET_BASE_URL = "{{ WIDGET_BASE_URL }}";
 
-class ClaudeChatWidget {
+class ChatBotWidget {
     constructor() {
         this.sessionId = null;
         this.config = {};
@@ -11,7 +11,7 @@ class ClaudeChatWidget {
         this.messageQueue = [];
         this.isProcessing = false;
         this.currentProvider = 'claude';
-        this.currentProviderName = 'Claude Assistant';
+        this.currentProviderName = 'ChatBot Assistant';
         this.userIdentifier = this.getUserIdentifier();
 
         // Apply config from URL params immediately to avoid flash of default colors
@@ -372,7 +372,7 @@ class ClaudeChatWidget {
         // Update current provider if specified
         if (newConfig.aiProvider) {
             this.currentProvider = newConfig.aiProvider;
-            this.currentProviderName = newConfig.aiProvider === 'openai' ? 'GPT Assistant' : 'Claude Assistant';
+            this.currentProviderName = newConfig.aiProvider === 'openai' ? 'GPT Assistant' : 'ChatBot Assistant';
             this.updateProviderUI();
         }
 
@@ -495,7 +495,7 @@ class ClaudeChatWidget {
             // Update provider information
             if (data.provider) {
                 this.currentProvider = data.provider;
-                this.currentProviderName = data.providerName || (data.provider === 'openai' ? 'GPT Assistant' : 'Claude Assistant');
+                this.currentProviderName = data.providerName || (data.provider === 'openai' ? 'GPT Assistant' : 'ChatBot Assistant');
 
                 // Update UI elements
                 this.updateProviderUI();
@@ -930,7 +930,7 @@ class ClaudeChatWidget {
     updateProviderUI() {
         // Use configured bot name if available, otherwise use provider-based name
         const botName = this.botConfig?.botName || this.currentProviderName;
-        const poweredBy = this.botConfig?.poweredBy || (this.currentProvider === 'openai' ? 'OpenAI' : 'Claude');
+        const poweredBy = this.botConfig?.poweredBy || (this.currentProvider === 'openai' ? 'OpenAI' : 'ChatBot');
 
         // Update bot name in header
         this.elements.botName.textContent = botName;
@@ -1071,7 +1071,7 @@ function initializeWidget() {
         // Wait a bit to ensure all DOM elements are ready
         setTimeout(() => {
             try {
-                window.claudeWidget = new ClaudeChatWidget();
+                window.chatbotWidget = new ChatBotWidget();
             } catch (error) {
                 console.error('Failed to initialize widget:', error);
             }
@@ -1086,7 +1086,7 @@ function initializeIframeLoader() {
     const apiKey = scriptTag ? scriptTag.getAttribute('data-api-key') : null;
 
     if (!apiKey) {
-        console.error('ClaudeChatWidget: API key not found. Add data-api-key attribute to script tag.');
+        console.error('ChatBotWidget: API key not found. Add data-api-key attribute to script tag.');
         return;
     }
 
@@ -1145,7 +1145,7 @@ function initializeIframeLoader() {
     // Listen for widget messages (ready, minimized state, etc.)
     window.addEventListener('message', function handleWidgetMessages(event) {
         if (event.data.type === 'widget_ready') {
-            console.log('ClaudeChatWidget: Widget ready, sending full configuration via postMessage');
+            console.log('ChatBotWidget: Widget ready, sending full configuration via postMessage');
 
             // Send all UI configuration (colors, branding, etc.)
             const uiConfig = {};
@@ -1162,7 +1162,7 @@ function initializeIframeLoader() {
                     type: 'configure',
                     data: uiConfig
                 }, '*');
-                console.log('ClaudeChatWidget: Sent UI configuration');
+                console.log('ChatBotWidget: Sent UI configuration');
             }
 
             // Send dynamic data separately (stored as jsonData for CSV conversion)
@@ -1173,7 +1173,7 @@ function initializeIframeLoader() {
                     type: 'page_data',
                     pageInfo: dynamicData
                 }, '*');
-                console.log('ClaudeChatWidget: Sent dynamic data');
+                console.log('ChatBotWidget: Sent dynamic data');
             }
 
             // Send any other config keys that weren't handled above
@@ -1190,7 +1190,7 @@ function initializeIframeLoader() {
                     type: 'configure',
                     data: otherConfig
                 }, '*');
-                console.log('ClaudeChatWidget: Sent additional config');
+                console.log('ChatBotWidget: Sent additional config');
             }
         } else if (event.data.type === 'widget_minimized') {
             // Handle widget minimize/maximize state changes
@@ -1210,7 +1210,7 @@ function initializeIframeLoader() {
         }
     });
 
-    console.log('ClaudeChatWidget: Iframe loaded with API key and config', chatbotConfig);
+    console.log('ChatBotWidget: Iframe loaded with API key and config', chatbotConfig);
 }
 
 // Initialize the widget when DOM is loaded
@@ -1222,4 +1222,4 @@ if (document.readyState === 'loading') {
 }
 
 // Export for external access
-window.ClaudeChatWidget = ClaudeChatWidget;
+window.ChatBotWidget = ChatBotWidget;
