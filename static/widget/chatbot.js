@@ -1,4 +1,4 @@
-class ClaudeChatWidget {
+class ChatBotWidget {
     constructor() {
         this.sessionId = null;
         this.config = {};
@@ -8,7 +8,7 @@ class ClaudeChatWidget {
         this.messageQueue = [];
         this.isProcessing = false;
         this.currentProvider = 'openai';
-        this.currentProviderName = 'Claude Assistant';
+        this.currentProviderName = 'ChatBot Assistant';
         this.userIdentifier = this.getUserIdentifier();
 
         // Apply config from URL params immediately to avoid flash of default colors
@@ -107,19 +107,24 @@ class ClaudeChatWidget {
             try {
                 const config = JSON.parse(decodeURIComponent(configParam));
 
-                // Apply bot configuration immediately if present
-                if (config.botColor) {
-                    document.documentElement.style.setProperty('--bot-primary-color', config.botColor);
-                    const darkerColor = this.darkenColor(config.botColor, 20);
-                    document.documentElement.style.setProperty('--bot-primary-color-dark', darkerColor);
-                    const lighterColor = this.lightenColor(config.botColor, 80);
-                    document.documentElement.style.setProperty('--bot-primary-color-light', lighterColor);
-                }
+                // Only apply colors if not already set by server-side rendering
+                const hasServerConfig = window.WIDGET_CONFIG && window.WIDGET_CONFIG.botColor && window.WIDGET_CONFIG.botColor !== '#667eea';
 
-                if (config.botMsgBgColor) {
-                    document.documentElement.style.setProperty('--bot-msg-bg-color', config.botMsgBgColor);
-                    const darkerColor = this.darkenColor(config.botMsgBgColor, 20);
-                    document.documentElement.style.setProperty('--bot-msg-bg-color-dark', darkerColor);
+                if (!hasServerConfig) {
+                    // Apply bot configuration immediately if present
+                    if (config.botColor) {
+                        document.documentElement.style.setProperty('--bot-primary-color', config.botColor);
+                        const darkerColor = this.darkenColor(config.botColor, 20);
+                        document.documentElement.style.setProperty('--bot-primary-color-dark', darkerColor);
+                        const lighterColor = this.lightenColor(config.botColor, 80);
+                        document.documentElement.style.setProperty('--bot-primary-color-light', lighterColor);
+                    }
+
+                    if (config.botMsgBgColor) {
+                        document.documentElement.style.setProperty('--bot-msg-bg-color', config.botMsgBgColor);
+                        const darkerColor = this.darkenColor(config.botMsgBgColor, 20);
+                        document.documentElement.style.setProperty('--bot-msg-bg-color-dark', darkerColor);
+                    }
                 }
 
                 this.config = config;
@@ -369,7 +374,7 @@ class ClaudeChatWidget {
         // Update current provider if specified
         if (newConfig.aiProvider) {
             this.currentProvider = newConfig.aiProvider;
-            this.currentProviderName = newConfig.aiProvider === 'openai' ? 'GPT Assistant' : 'Claude Assistant';
+            this.currentProviderName = newConfig.aiProvider === 'openai' ? 'GPT Assistant' : 'ChatBot Assistant';
             this.updateProviderUI();
         }
 
@@ -492,7 +497,7 @@ class ClaudeChatWidget {
             // Update provider information
             if (data.provider) {
                 this.currentProvider = data.provider;
-                this.currentProviderName = data.providerName || (data.provider === 'openai' ? 'GPT Assistant' : 'Claude Assistant');
+                this.currentProviderName = data.providerName || (data.provider === 'openai' ? 'GPT Assistant' : 'ChatBot Assistant');
 
                 // Update UI elements
                 this.updateProviderUI();
@@ -862,30 +867,33 @@ class ClaudeChatWidget {
         // Store configuration for later use
         this.botConfig = config;
 
-        // Update bot name if provided
-        if (config.botName) {
+        // Check if we have initial config from server (to avoid overriding with defaults)
+        const hasInitialConfig = window._initialConfig && window._initialConfig.botName;
+
+        // Update bot name if provided (and not already set by server)
+        if (config.botName && !hasInitialConfig) {
             this.currentProviderName = config.botName;
             this.elements.botName.textContent = config.botName;
             this.elements.typingText.textContent = `${config.botName} is typing...`;
         }
 
-        // Update powered by text if provided
-        if (config.poweredBy) {
+        // Update powered by text if provided (and not already set by server)
+        if (config.poweredBy && !hasInitialConfig) {
             this.elements.poweredBy.textContent = `Powered by ${config.poweredBy}`;
         }
 
-        // Update bot colors if provided
-        if (config.botColor) {
+        // Update bot colors if provided (and not already set by server)
+        if (config.botColor && !window.WIDGET_CONFIG?.botColor) {
             this.applyBotColors(config.botColor);
         }
 
-        // Update bot icon if provided
-        if (config.botIcon) {
+        // Update bot icon if provided (and not already set by server)
+        if (config.botIcon && !hasInitialConfig) {
             this.applyBotIcon(config.botIcon);
         }
 
-        // Update message background color if provided
-        if (config.botMsgBgColor) {
+        // Update message background color if provided (and not already set by server)
+        if (config.botMsgBgColor && !window.WIDGET_CONFIG?.botMsgBgColor) {
             this.applyMessageBgColor(config.botMsgBgColor);
         }
     }
@@ -927,7 +935,7 @@ class ClaudeChatWidget {
     updateProviderUI() {
         // Use configured bot name if available, otherwise use provider-based name
         const botName = this.botConfig?.botName || this.currentProviderName;
-        const poweredBy = this.botConfig?.poweredBy || (this.currentProvider === 'openai' ? 'OpenAI' : 'Claude');
+        const poweredBy = this.botConfig?.poweredBy || (this.currentProvider === 'openai' ? 'OpenAI' : 'ChatBot');
 
         // Update bot name in header
         this.elements.botName.textContent = botName;
@@ -1074,7 +1082,7 @@ function initializeWidget() {
         // Wait a bit to ensure all DOM elements are ready
         setTimeout(() => {
             try {
-                window.claudeWidget = new ClaudeChatWidget();
+                window.chatbotWidget = new ChatBotWidget();
             } catch (error) {
                 console.error('Failed to initialize widget:', error);
             }
@@ -1089,7 +1097,7 @@ function initializeIframeLoader() {
     const apiKey = scriptTag ? scriptTag.getAttribute('data-api-key') : null;
 
     if (!apiKey) {
-        console.error('ClaudeChatWidget: API key not found. Add data-api-key attribute to script tag.');
+        console.error('ChatBotWidget: API key not found. Add data-api-key attribute to script tag.');
         return;
     }
 
@@ -1180,7 +1188,7 @@ function initializeIframeLoader() {
     // Listen for widget messages (ready, minimized state, etc.)
     window.addEventListener('message', function handleWidgetMessages(event) {
         if (event.data.type === 'widget_ready') {
-            console.log('ClaudeChatWidget: Widget ready, sending full configuration');
+            console.log('ChatBotWidget: Widget ready, sending full configuration');
 
             // Send dynamic data to iframe if available (stored as jsonData for CSV conversion)
             // Priority: jsonData > pageData (for backwards compatibility)
@@ -1190,7 +1198,7 @@ function initializeIframeLoader() {
                     type: 'page_data',
                     pageInfo: dynamicData
                 }, '*');
-                console.log('ClaudeChatWidget: Sent dynamic data as jsonData');
+                console.log('ChatBotWidget: Sent dynamic data as jsonData');
             }
 
             // Send any additional config that wasn't in the URL (for completeness)
@@ -1208,7 +1216,7 @@ function initializeIframeLoader() {
                     type: 'configure',
                     data: additionalConfig
                 }, '*');
-                console.log('ClaudeChatWidget: Sent additional config');
+                console.log('ChatBotWidget: Sent additional config');
             }
         } else if (event.data.type === 'widget_minimized') {
             // Handle widget minimize/maximize state changes
@@ -1228,7 +1236,7 @@ function initializeIframeLoader() {
         }
     });
 
-    console.log('ClaudeChatWidget: Iframe loaded with API key and config', chatbotConfig);
+    console.log('ChatBotWidget: Iframe loaded with API key and config', chatbotConfig);
 }
 
 // Initialize the widget when DOM is loaded
@@ -1240,4 +1248,4 @@ if (document.readyState === 'loading') {
 }
 
 // Export for external access
-window.ClaudeChatWidget = ClaudeChatWidget;
+window.ChatBotWidget = ChatBotWidget;

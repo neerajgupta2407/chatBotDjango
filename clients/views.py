@@ -217,12 +217,55 @@ class WidgetJavaScriptView(APIView):
 
 
 class WidgetHTMLView(TemplateView):
-    """Serve chatbot.html with WIDGET_BASE_URL injected"""
+    """Serve chatbot.html with full configuration injected to prevent visual flash"""
 
     template_name = "widget/chatbot.html"
     content_type = "text/html"
 
+    def get(self, request, *args, **kwargs):
+        """Override get method to require and validate API key before serving HTML"""
+        api_key = request.GET.get("apiKey")
+
+        # Require valid API key
+        if not api_key:
+            logger.warning("Widget HTML request without API key")
+            return HttpResponse(
+                "Error: API key is required. Usage: /widget/chatbot.html?apiKey=YOUR_API_KEY",
+                status=401,
+                content_type="text/plain",
+            )
+
+        # Validate API key
+        try:
+            client = Client.objects.get(api_key=api_key, is_active=True)
+            logger.info(f"Serving widget HTML for client: {client.name}")
+        except Client.DoesNotExist:
+            logger.warning(
+                f"Invalid or inactive API key in widget HTML request: {api_key}"
+            )
+            return HttpResponse(
+                "Error: Invalid or inactive API key",
+                status=403,
+                content_type="text/plain",
+            )
+
+        # Proceed with normal template rendering
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["WIDGET_BASE_URL"] = settings.WIDGET_BASE_URL
+
+        # Get client configuration (we know it's valid from get() method)
+        api_key = self.request.GET.get("apiKey")
+        client = Client.objects.get(api_key=api_key, is_active=True)
+        config = client.config
+
+        # Inject client-specific configuration
+        context["bot_name"] = config.get("bot_name", "ChatBot Assistant")
+        context["bot_color"] = config.get("primary_color", "#667eea")
+        context["bot_msg_bg_color"] = config.get("bot_message_bg_color", "#667eea")
+        context["bot_icon_url"] = config.get("bot_icon_url", "")
+        context["powered_by_text"] = config.get("powered_by_text", "Powered by ChatBot")
+
         return context

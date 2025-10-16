@@ -201,14 +201,14 @@ OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
 DUMMY_MODEL = env("DUMMY_MODEL", default="dummy-1.0")
 
 # Bot Configuration
-BOT_NAME = env("BOT_NAME", default="Claude Assistant")
-BOT_POWERED_BY = env("BOT_POWERED_BY", default="Claude")
+BOT_NAME = env("BOT_NAME", default="ChatBot Assistant")
+BOT_POWERED_BY = env("BOT_POWERED_BY", default="ChatBot")
 BOT_COLOR = env("BOT_COLOR", default="#667eea")
 BOT_MSG_BG_COLOR = env("BOT_MSG_BG_COLOR", default="#667eea")
 BOT_ICON = env("BOT_ICON", default=None)
-CLAUDE_BOT_NAME = env("CLAUDE_BOT_NAME", default="Claude Assistant")
-OPENAI_BOT_NAME = env("OPENAI_BOT_NAME", default="GPT Assistant")
-DUMMY_BOT_NAME = env("DUMMY_BOT_NAME", default="Dummy Assistant")
+CLAUDE_BOT_NAME = env("CLAUDE_BOT_NAME", default="ChatBot Assistant")
+OPENAI_BOT_NAME = env("OPENAI_BOT_NAME", default="ChatBot Assistant")
+DUMMY_BOT_NAME = env("DUMMY_BOT_NAME", default="ChatBot Assistant")
 
 # Widget Configuration
 WIDGET_BASE_URL = env("WIDGET_BASE_URL", default="http://localhost:8000")
