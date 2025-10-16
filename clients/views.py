@@ -27,7 +27,12 @@ class ClientConfigView(APIView):
             )
 
         return Response(
-            {"client_id": str(client.id), "name": client.name, "config": client.config}
+            {
+                "client_id": str(client.id),
+                "name": client.name,
+                "config": client.config,
+                "system_prompt": client.config.get("system_prompt", ""),
+            }
         )
 
     def put(self, request):

@@ -94,6 +94,7 @@ class ChatService:
         session_config: Dict[str, Any],
         conversation_history: List[Dict],
         file_data: Optional[Dict] = None,
+        system_prompt: Optional[str] = None,
     ) -> str:
         """Build context prompt with comprehensive token management"""
         page_context = session_config.get("pageContext", {})
@@ -106,8 +107,14 @@ class ChatService:
             user_message, ChatService.MAX_USER_MESSAGE_TOKENS, preserve_ending=True
         )
 
-        # Build base context
-        base_context = f"""You are a helpful assistant embedded in a website to answer questions about the current page and help users.
+        # Build base context - use custom system_prompt if provided
+        if system_prompt:
+            base_context = system_prompt
+        else:
+            base_context = f"""You are a helpful assistant embedded in a website to answer questions about the current page and help users."""
+
+        # Add page information
+        base_context += f"""
 
 Page Information:
 - URL: {page_context.get('url') or page_data.get('url') or 'Not provided'}

@@ -89,8 +89,11 @@ class ChatMessageView(APIView):
                     ),
                 }
 
+            # Get client's custom system prompt if configured
+            system_prompt = client.config.get("system_prompt")
+
             context_prompt = ChatService.build_context_prompt(
-                message, session.config, conversation_history, file_data
+                message, session.config, conversation_history, file_data, system_prompt
             )
 
             logger.info(
