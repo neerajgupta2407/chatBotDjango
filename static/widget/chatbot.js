@@ -1130,16 +1130,18 @@ function initializeIframeLoader() {
     // Create iframe container
     const iframe = document.createElement('iframe');
     iframe.id = 'chatbot-iframe';
+    // Start with minimized dimensions (widget starts minimized by default)
     iframe.style.cssText = `
         position: fixed;
         bottom: 20px;
         right: 20px;
-        width: 400px;
-        height: 600px;
+        width: 70px;
+        height: 70px;
         border: none;
-        border-radius: 12px;
+        border-radius: 50%;
         z-index: 999999;
         background: transparent;
+        transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
     `;
 
     // Build iframe URL with parameters
@@ -1175,8 +1177,8 @@ function initializeIframeLoader() {
     // Append to body
     document.body.appendChild(iframe);
 
-    // Listen for widget ready message, then send dynamic data if available
-    window.addEventListener('message', function handleWidgetReady(event) {
+    // Listen for widget messages (ready, minimized state, etc.)
+    window.addEventListener('message', function handleWidgetMessages(event) {
         if (event.data.type === 'widget_ready') {
             console.log('ClaudeChatWidget: Widget ready, sending full configuration');
 
@@ -1207,6 +1209,21 @@ function initializeIframeLoader() {
                     data: additionalConfig
                 }, '*');
                 console.log('ClaudeChatWidget: Sent additional config');
+            }
+        } else if (event.data.type === 'widget_minimized') {
+            // Handle widget minimize/maximize state changes
+            const isMinimized = event.data.minimized;
+
+            if (isMinimized) {
+                // Widget is minimized - show only floating icon
+                iframe.style.width = '70px';
+                iframe.style.height = '70px';
+                iframe.style.borderRadius = '50%';
+            } else {
+                // Widget is expanded - show full chat interface
+                iframe.style.width = '400px';
+                iframe.style.height = '600px';
+                iframe.style.borderRadius = '12px';
             }
         }
     });
