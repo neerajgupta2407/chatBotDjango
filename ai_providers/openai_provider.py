@@ -29,14 +29,23 @@ class OpenAIProvider(BaseAIProvider):
             options = {}
 
         model = options.get("model") or self.default_model
-        max_tokens = options.get("maxTokens", 1000)
+        max_tokens = options.get("maxTokens", 30000)
+        max_tokens = 30000
         temperature = options.get("temperature")
 
+        # GPT-5 models require max_completion_tokens instead of max_tokens
         request_params = {
             "model": model,
-            "max_tokens": max_tokens,
             "messages": messages,
         }
+
+        # Use max_completion_tokens for GPT-5 models, max_tokens for others
+        if model.startswith("gpt-5"):
+            request_params["max_completion_tokens"] = max_tokens
+            # Set minimal reasoning effort to avoid empty responses
+            request_params["reasoning_effort"] = "minimal"
+        else:
+            request_params["max_tokens"] = max_tokens
 
         if temperature is not None:
             request_params["temperature"] = temperature

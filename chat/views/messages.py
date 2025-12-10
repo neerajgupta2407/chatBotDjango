@@ -92,16 +92,18 @@ class ChatMessageView(APIView):
             # Get client's custom system prompt if configured
             system_prompt = client.config.get("system_prompt")
 
-            context_prompt = ChatService.build_context_prompt(
+            # Build messages with proper system/user role separation
+            ai_messages = ChatService.build_messages(
                 message, session.config, conversation_history, file_data, system_prompt
             )
 
-            logger.info(
-                f"Context Prompt Token Estimate: {ChatService.estimate_token_count(context_prompt)}"
+            # Calculate total token estimate for logging
+            total_tokens = sum(
+                ChatService.estimate_token_count(msg["content"]) for msg in ai_messages
             )
-
-            # Prepare messages for AI provider
-            ai_messages = [{"role": "user", "content": context_prompt}]
+            logger.info(
+                f"Messages Token Estimate: {total_tokens} (system + history + user)"
+            )
 
             # Call AI provider (synchronous wrapper for async)
             import asyncio

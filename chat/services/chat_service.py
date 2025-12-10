@@ -208,3 +208,118 @@ You have access to structured data. You can analyze this data and answer questio
 {f'When discussing the JSON data, be specific about metrics, campaigns, and performance indicators. You can compare campaigns, calculate totals, identify trends, and provide insights based on the data.' if json_data else ''} Keep responses concise but informative."""
 
         return context_prompt
+
+    @staticmethod
+    def build_messages(
+        user_message: str,
+        session_config: Dict[str, Any],
+        conversation_history: List[Dict],
+        file_data: Optional[Dict] = None,
+        system_prompt: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """Build properly structured messages with separate system and user roles for OpenAI API"""
+        page_context = session_config.get("pageContext", {})
+        custom_instructions = session_config.get("customInstructions", "")
+        json_data = session_config.get("jsonData", {})
+        page_data = session_config.get("pageData", {})
+
+        # Truncate user message if too long
+        truncated_user_message = ChatService.truncate_text(
+            user_message, ChatService.MAX_USER_MESSAGE_TOKENS, preserve_ending=True
+        )
+
+        # Build system message content
+        if system_prompt:
+            system_content = system_prompt
+        else:
+            system_content = "You are a helpful assistant embedded in a website to answer questions about the current page and help users."
+
+        # Add page information to system message
+        system_content += f"""
+
+Page Information:
+- URL: {page_context.get('url') or page_data.get('url') or 'Not provided'}
+- Title: {page_context.get('title') or page_data.get('title') or 'Not provided'}
+- Content Summary: {page_context.get('content') or page_context.get('description') or page_data.get('pageContent') or 'Not provided'}
+- Hostname: {page_data.get('hostname') or 'Not provided'}
+- Page Language: {page_data.get('language') or 'Not provided'}
+
+{f'Special Instructions: {custom_instructions}' if custom_instructions else ''}"""
+
+        # Handle JSON data with dynamic CSV conversion
+        if json_data:
+            processed_data, csv_data = ChatService.process_json_data_to_csv(json_data)
+
+            if csv_data:
+                csv_sections = ""
+                for path, data in csv_data.items():
+                    csv_sections += f"\n## {data['name']} ({data['originalLength']} records):\n{data['csv']}\n"
+
+                optimized_json_string = json.dumps(processed_data, indent=2)
+                truncated_json_string = ChatService.truncate_text(
+                    optimized_json_string, ChatService.MAX_JSON_DATA_TOKENS
+                )
+
+                system_content += f"""
+
+Available Data{' (truncated)' if '...' in truncated_json_string else ''}:
+
+=== CSV DATA ===
+{csv_sections}
+
+=== ADDITIONAL CONTEXT ===
+{truncated_json_string}
+
+You have access to structured data in CSV format above, plus additional context. You can analyze this data, compare records, calculate totals, identify trends, and provide insights based on the metrics."""
+            else:
+                json_string = json.dumps(json_data, indent=2)
+                truncated_json_string = ChatService.truncate_text(
+                    json_string, ChatService.MAX_JSON_DATA_TOKENS
+                )
+
+                system_content += f"""
+
+Available JSON Data{' (truncated)' if '...' in truncated_json_string else ''}:
+{truncated_json_string}
+
+You have access to structured data. You can analyze this data and answer questions about it."""
+
+        # Handle file data
+        if file_data:
+            file_data_section = FileProcessor.generate_context_prompt(file_data)
+            system_content += f"\n\n{file_data_section}"
+
+        # Add instructions for response style
+        system_content += f"""
+
+Please provide helpful, accurate responses based on the page context{', the JSON data provided' if json_data else ''}{', and the uploaded file data' if file_data else ''}.
+{f'When discussing the JSON data, be specific about metrics, campaigns, and performance indicators. You can compare campaigns, calculate totals, identify trends, and provide insights based on the data.' if json_data else ''} Keep responses concise but informative."""
+
+        # Build messages array with proper roles
+        messages = [{"role": "system", "content": system_content}]
+
+        # Add conversation history with proper roles
+        if conversation_history:
+            history_tokens = 0
+            # Add messages from most recent backwards until we hit token limit
+            history_messages = []
+            for msg in reversed(conversation_history):
+                msg_tokens = ChatService.estimate_token_count(msg["content"])
+                if history_tokens + msg_tokens > ChatService.MAX_HISTORY_TOKENS:
+                    break
+                history_messages.insert(
+                    0, {"role": msg["role"], "content": msg["content"]}
+                )
+                history_tokens += msg_tokens
+
+            messages.extend(history_messages)
+
+        # Add current user message
+        if truncated_user_message != user_message:
+            user_content = f"{truncated_user_message}\n\n[Note: Message was truncated due to length. Original length: {len(user_message)} characters]"
+        else:
+            user_content = truncated_user_message
+
+        messages.append({"role": "user", "content": user_content})
+
+        return messages
