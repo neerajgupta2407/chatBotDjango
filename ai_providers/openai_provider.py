@@ -29,8 +29,7 @@ class OpenAIProvider(BaseAIProvider):
             options = {}
 
         model = options.get("model") or self.default_model
-        max_tokens = options.get("maxTokens", 30000)
-        max_tokens = 30000
+        max_tokens = options.get("maxTokens", 1000)
         temperature = options.get("temperature")
 
         # GPT-5 models require max_completion_tokens instead of max_tokens

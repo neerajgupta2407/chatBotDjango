@@ -138,9 +138,10 @@ class OpenAIProviderTestCase(TestCase):
             model="gpt-4-turbo", max_tokens=1000, messages=messages
         )
 
+    @override_settings(OPENAI_MODEL="gpt-4o")
     @patch("ai_providers.openai_provider.OpenAI")
     def test_generate_response_with_custom_max_tokens(self, mock_openai_class):
-        """Should use custom max_tokens when provided"""
+        """Should use custom max_tokens when provided (GPT-4)"""
         # Arrange
         mock_client = Mock()
         mock_openai_class.return_value = mock_client

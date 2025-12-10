@@ -120,7 +120,7 @@ class ChatMessageView(APIView):
                     ai_messages,
                     {
                         "model": session.config.get("model"),
-                        "maxTokens": session.config.get("maxTokens", 1000),
+                        "maxTokens": session.config.get("maxTokens", 30000),
                     },
                 )
             )
