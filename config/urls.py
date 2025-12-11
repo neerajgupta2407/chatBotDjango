@@ -42,6 +42,17 @@ urlpatterns = [
     path("widget/chatbot.html", WidgetHTMLView.as_view(), name="widget-html"),
     # Demo page
     path("demo", TemplateView.as_view(template_name="demo.html"), name="demo"),
+    # Test pages
+    path(
+        "test-debounce",
+        TemplateView.as_view(template_name="test-debounce.html"),
+        name="test-debounce",
+    ),
+    path(
+        "test-widget",
+        TemplateView.as_view(template_name="test-widget.html"),
+        name="test-widget",
+    ),
 ]
 
 # Serve static and media files in development

@@ -11,6 +11,10 @@ class ChatBotWidget {
         this.currentProviderName = 'ChatBot Assistant';
         this.userIdentifier = this.getUserIdentifier();
 
+        // Config update debounce
+        this.configUpdateTimer = null;
+        this.pendingConfigUpdate = false;
+
         // Apply config from URL params immediately to avoid flash of default colors
         this.loadConfigFromURL();
 
@@ -381,23 +385,52 @@ class ChatBotWidget {
         // Log the configuration for debugging
         console.log('Widget configuration updated:', this.config);
 
-        // Update session configuration
-        if (this.sessionId) {
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (this.apiKey) {
-                headers['X-API-Key'] = this.apiKey;
-            }
+        // Debounce config updates to avoid multiple API calls
+        this.debouncedConfigUpdate();
+    }
 
-            fetch(`${this.apiBaseUrl}/api/chat/sessions/${this.sessionId}/config`, {
-                method: 'PUT',
-                headers: headers,
-                body: JSON.stringify({ config: this.config })
-            }).catch(error => {
-                console.error('Failed to update session config:', error);
-            });
+    debouncedConfigUpdate() {
+        // Clear existing timer
+        if (this.configUpdateTimer) {
+            clearTimeout(this.configUpdateTimer);
         }
+
+        // Mark that we have a pending update
+        this.pendingConfigUpdate = true;
+
+        // Set new timer to batch updates
+        this.configUpdateTimer = setTimeout(() => {
+            this.flushConfigUpdate();
+        }, 300); // Wait 300ms for more updates before sending
+    }
+
+    flushConfigUpdate() {
+        // Only update if we have a session and pending updates
+        if (!this.sessionId || !this.pendingConfigUpdate) {
+            return;
+        }
+
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (this.apiKey) {
+            headers['X-API-Key'] = this.apiKey;
+        }
+
+        console.log('Flushing config update to server:', this.config);
+
+        fetch(`${this.apiBaseUrl}/api/chat/sessions/${this.sessionId}/config`, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify({ config: this.config })
+        }).then(response => {
+            if (response.ok) {
+                console.log('Config update successful');
+                this.pendingConfigUpdate = false;
+            }
+        }).catch(error => {
+            console.error('Failed to update session config:', error);
+        });
     }
 
     handlePageData(data) {
@@ -407,23 +440,8 @@ class ChatBotWidget {
         // Log for debugging
         console.log('Dynamic data received and stored as jsonData:', data.pageInfo);
 
-        // Update session with jsonData
-        if (this.sessionId) {
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (this.apiKey) {
-                headers['X-API-Key'] = this.apiKey;
-            }
-
-            fetch(`${this.apiBaseUrl}/api/chat/sessions/${this.sessionId}/config`, {
-                method: 'PUT',
-                headers: headers,
-                body: JSON.stringify({ config: this.config })
-            }).catch(error => {
-                console.error('Failed to update session with jsonData:', error);
-            });
-        }
+        // Use debounced update to batch with other config changes
+        this.debouncedConfigUpdate();
     }
 
     handleInputChange() {

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test - No Cache</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chatbot Widget Test (No Cache)</h1>
+    <p>Testing widget with cache-busted URL...</p>
+
+    <script>
+        window.ChatbotConfig = {
+            userIdentifier: 'test-user@example.com',
+            pageData: {
+                test: 'This is a test page'
+            }
+        };
+    </script>
+
+    <!-- Load with timestamp to force fresh load -->
+    <script>
+        const timestamp = Date.now();
+        const script = document.createElement('script');
+        script.src = `http://127.0.0.1:8001/widget/chatbot.js?t=${timestamp}`;
+        script.setAttribute('data-api-key', 'cb_RRSaEDFEoU8T3peypOo6TsBfZoQ5odFHtkapXYB-LBmDzE6q2JGJLDLwtqQjRdWR');
+        document.body.appendChild(script);
+        console.log('Loading widget script from:', script.src);
+    </script>
+</body>
+</html>
