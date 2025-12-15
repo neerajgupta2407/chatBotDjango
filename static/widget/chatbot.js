@@ -11,10 +11,6 @@ class ChatBotWidget {
         this.currentProviderName = 'ChatBot Assistant';
         this.userIdentifier = this.getUserIdentifier();
 
-        // Config update debounce
-        this.configUpdateTimer = null;
-        this.pendingConfigUpdate = false;
-
         // Apply config from URL params immediately to avoid flash of default colors
         this.loadConfigFromURL();
 
@@ -385,52 +381,8 @@ class ChatBotWidget {
         // Log the configuration for debugging
         console.log('Widget configuration updated:', this.config);
 
-        // Debounce config updates to avoid multiple API calls
-        this.debouncedConfigUpdate();
-    }
-
-    debouncedConfigUpdate() {
-        // Clear existing timer
-        if (this.configUpdateTimer) {
-            clearTimeout(this.configUpdateTimer);
-        }
-
-        // Mark that we have a pending update
-        this.pendingConfigUpdate = true;
-
-        // Set new timer to batch updates
-        this.configUpdateTimer = setTimeout(() => {
-            this.flushConfigUpdate();
-        }, 300); // Wait 300ms for more updates before sending
-    }
-
-    flushConfigUpdate() {
-        // Only update if we have a session and pending updates
-        if (!this.sessionId || !this.pendingConfigUpdate) {
-            return;
-        }
-
-        const headers = {
-            'Content-Type': 'application/json',
-        };
-        if (this.apiKey) {
-            headers['X-API-Key'] = this.apiKey;
-        }
-
-        console.log('Flushing config update to server:', this.config);
-
-        fetch(`${this.apiBaseUrl}/api/chat/sessions/${this.sessionId}/config`, {
-            method: 'PUT',
-            headers: headers,
-            body: JSON.stringify({ config: this.config })
-        }).then(response => {
-            if (response.ok) {
-                console.log('Config update successful');
-                this.pendingConfigUpdate = false;
-            }
-        }).catch(error => {
-            console.error('Failed to update session config:', error);
-        });
+        // Config will be sent with the next message via buildMessageConfig()
+        // No need for separate API call since send API already updates session config
     }
 
     handlePageData(data) {
@@ -440,8 +392,8 @@ class ChatBotWidget {
         // Log for debugging
         console.log('Dynamic data received and stored as jsonData:', data.pageInfo);
 
-        // Use debounced update to batch with other config changes
-        this.debouncedConfigUpdate();
+        // Config will be sent with the next message via buildMessageConfig()
+        // No need for separate API call since send API already updates session config
     }
 
     handleInputChange() {
