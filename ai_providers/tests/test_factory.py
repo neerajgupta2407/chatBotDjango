@@ -332,7 +332,7 @@ class AIProviderFactoryTestCase(TestCase):
 
         mock_response = {"content": "Response", "provider": "claude"}
 
-        async def mock_generate(messages, options=None):
+        async def mock_generate(messages, options=None, tools=None):
             return {**mock_response, "options_received": options}
 
         mock_provider.generate_response = mock_generate
@@ -364,7 +364,7 @@ class AIProviderFactoryTestCase(TestCase):
 
         mock_response = {"content": "Response", "provider": "claude"}
 
-        async def mock_generate(messages, options=None):
+        async def mock_generate(messages, options=None, tools=None):
             return mock_response
 
         mock_provider.generate_response = mock_generate

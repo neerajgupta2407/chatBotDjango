@@ -51,8 +51,9 @@ class AIProviderFactory:
     async def generate_response(
         self,
         provider_name: Optional[str],
-        messages: List[Dict[str, str]],
+        messages: List[Dict[str, Any]],
         options: Optional[Dict[str, Any]] = None,
+        tools: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
         """Generate response from specified AI provider"""
         if options is None:
@@ -61,7 +62,7 @@ class AIProviderFactory:
         name = provider_name or settings.AI_PROVIDER
         provider = self.get_provider(name)
 
-        return await provider.generate_response(messages, options)
+        return await provider.generate_response(messages, options, tools=tools)
 
     def get_available_providers(self) -> List[str]:
         """Get list of available providers"""

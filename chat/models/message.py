@@ -12,6 +12,7 @@ class Message(models.Model):
         ("user", "User"),
         ("assistant", "Assistant"),
         ("system", "System"),
+        ("tool", "Tool"),
     ]
 
     session = models.ForeignKey(

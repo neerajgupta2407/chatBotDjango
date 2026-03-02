@@ -304,12 +304,35 @@ Please provide helpful, accurate responses based on the page context{', the JSON
             # Add messages from most recent backwards until we hit token limit
             history_messages = []
             for msg in reversed(conversation_history):
-                msg_tokens = ChatService.estimate_token_count(msg["content"])
+                content = msg.get("content", "")
+                msg_tokens = ChatService.estimate_token_count(content)
                 if history_tokens + msg_tokens > ChatService.MAX_HISTORY_TOKENS:
                     break
-                history_messages.insert(
-                    0, {"role": msg["role"], "content": msg["content"]}
-                )
+
+                role = msg.get("role", "user")
+
+                # Handle tool-related messages from history
+                if role == "tool":
+                    history_messages.insert(
+                        0,
+                        {
+                            "role": "tool",
+                            "tool_call_id": msg.get("tool_call_id", ""),
+                            "name": msg.get("name", ""),
+                            "content": content,
+                        },
+                    )
+                elif role == "assistant" and msg.get("tool_calls"):
+                    history_messages.insert(
+                        0,
+                        {
+                            "role": "assistant",
+                            "content": content,
+                            "tool_calls": msg["tool_calls"],
+                        },
+                    )
+                else:
+                    history_messages.insert(0, {"role": role, "content": content})
                 history_tokens += msg_tokens
 
             messages.extend(history_messages)

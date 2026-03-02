@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 
 from django.conf import settings
@@ -9,9 +11,30 @@ from rest_framework.views import APIView
 from ai_providers import ai_provider
 from chat.models import Message, Session
 from chat.services import ChatService
+from chat.services.dataforseo_client import get_dataforseo_client
+from chat.services.dataforseo_tools import get_tools as get_dataforseo_tools
 from core.authentication import APIKeyAuthentication, IsClientAuthenticated
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_dataforseo_modules(session, client):
+    """Resolve enabled DataForSEO modules from session > client > global settings."""
+    # Session-level override
+    modules = session.config.get("dataforseo_modules")
+    if modules:
+        return modules
+
+    # Client-level override
+    if client and client.config.get("dataforseo_modules"):
+        return client.config["dataforseo_modules"]
+
+    # Global setting
+    global_modules = getattr(settings, "DATAFORSEO_ENABLED_MODULES", "")
+    if global_modules:
+        return [m.strip() for m in global_modules.split(",") if m.strip()]
+
+    return []
 
 
 class ChatMessageView(APIView):
@@ -99,15 +122,25 @@ class ChatMessageView(APIView):
 
             # Calculate total token estimate for logging
             total_tokens = sum(
-                ChatService.estimate_token_count(msg["content"]) for msg in ai_messages
+                ChatService.estimate_token_count(msg.get("content", "") or "")
+                for msg in ai_messages
             )
             logger.info(
                 f"Messages Token Estimate: {total_tokens} (system + history + user)"
             )
 
-            # Call AI provider (synchronous wrapper for async)
-            import asyncio
+            # Resolve DataForSEO tools if configured
+            tools = None
+            dataforseo_client = get_dataforseo_client()
+            if dataforseo_client:
+                modules = _resolve_dataforseo_modules(session, client)
+                if modules:
+                    tools = get_dataforseo_tools(modules)
+                    logger.info(
+                        f"DataForSEO tools enabled: {len(tools)} tools from modules {modules}"
+                    )
 
+            # Call AI provider (synchronous wrapper for async)
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
@@ -122,10 +155,71 @@ class ChatMessageView(APIView):
                         "model": session.config.get("model"),
                         "maxTokens": session.config.get("maxTokens", 30000),
                     },
+                    tools=tools,
                 )
             )
 
-            assistant_response = ai_response["content"]
+            # Tool call loop: execute tools and get follow-up responses
+            max_tool_calls = getattr(settings, "DATAFORSEO_MAX_TOOL_CALLS", 3)
+            iterations = 0
+
+            while (
+                ai_response.get("tool_calls")
+                and dataforseo_client
+                and iterations < max_tool_calls
+            ):
+                iterations += 1
+                tool_calls = ai_response["tool_calls"]
+                logger.info(
+                    f"Tool call iteration {iterations}: {[tc['name'] for tc in tool_calls]}"
+                )
+
+                # Append assistant message with tool calls
+                ai_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": ai_response.get("content") or "",
+                        "tool_calls": tool_calls,
+                    }
+                )
+
+                # Execute each tool and append results
+                for tool_call in tool_calls:
+                    try:
+                        result = dataforseo_client.execute_tool(
+                            tool_call["name"], tool_call["input"]
+                        )
+                        result_str = json.dumps(result)
+                    except Exception as e:
+                        logger.error(f"Tool execution error ({tool_call['name']}): {e}")
+                        result_str = json.dumps({"error": str(e)})
+
+                    ai_messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call["id"],
+                            "name": tool_call["name"],
+                            "content": result_str,
+                        }
+                    )
+
+                # Call AI again with tool results
+                ai_response = loop.run_until_complete(
+                    ai_provider.generate_response(
+                        provider_name,
+                        ai_messages,
+                        {
+                            "model": session.config.get("model"),
+                            "maxTokens": session.config.get("maxTokens", 30000),
+                        },
+                        tools=tools,
+                    )
+                )
+
+            if iterations > 0:
+                logger.info(f"Tool calling completed after {iterations} iteration(s)")
+
+            assistant_response = ai_response.get("content") or ""
 
             # Save assistant response to Message model
             assistant_msg_obj = Message.objects.create(
@@ -135,6 +229,7 @@ class ChatMessageView(APIView):
                 metadata={
                     "provider": ai_response.get("provider"),
                     "model": ai_response.get("model"),
+                    "tool_iterations": iterations if iterations > 0 else None,
                 },
             )
 
