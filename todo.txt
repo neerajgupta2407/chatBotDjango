@@ -1,0 +1,5 @@
+1. Whitelisting of Domains: Done
+2. Bugs fixed for demo.html, Correct context is being sent
+3. Creater server on DigitalOcean.
+4. Auto Ci/CD done.
+5.
