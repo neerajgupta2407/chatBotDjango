@@ -1,0 +1,43 @@
+[Unit]
+Description=Django Chatbot Gunicorn Service
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+# User and group to run as (change to your server user)
+User=www-data
+Group=www-data
+
+# Working directory - UPDATE THIS PATH
+WorkingDirectory=/var/www/chatbot
+
+# Environment variables
+Environment="PATH=/var/www/chatbot/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+
+# Gunicorn command
+ExecStart=/var/www/chatbot/venv/bin/gunicorn \
+    --config /var/www/chatbot/gunicorn_config.py \
+    --workers 3 \
+    --bind unix:/var/run/gunicorn/chatbot.sock \
+    config.wsgi:application
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=chatbot
+
+# Security settings
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/chatbot/media /var/www/chatbot/staticfiles /var/log/gunicorn /var/run/gunicorn
+
+[Install]
+WantedBy=multi-user.target
