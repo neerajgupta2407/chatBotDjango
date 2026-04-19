@@ -35,6 +35,9 @@ case "$MODE" in
         chown "$SERVER_USER":"$SERVER_USER" "$DATA_FILE"
 
         echo "[backup] Bundling media + data -> $BUNDLE"
+        # Ensure media dir exists (may be absent if no uploads yet)
+        sudo -u "$SERVER_USER" mkdir -p "$PROJECT_DIR/media"
+
         tar czf "$BUNDLE" \
             -C "$PROJECT_DIR" media \
             -C /tmp "$(basename "$DATA_FILE")"
@@ -52,6 +55,7 @@ case "$MODE" in
 
         echo "[restore] Extracting $ARCHIVE"
         RESTORE_DIR=$(mktemp -d)
+        chmod 755 "$RESTORE_DIR"
         tar xzf "$ARCHIVE" -C "$RESTORE_DIR"
 
         echo "[restore] Copying media files"
