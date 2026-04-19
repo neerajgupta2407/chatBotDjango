@@ -21,9 +21,9 @@ case "$MODE" in
     backup)
         echo "[backup] Dumping data from $PROJECT_DIR"
         cd "$PROJECT_DIR"
-        export DJANGO_SETTINGS_MODULE=config.settings.production
 
-        sudo -u "$SERVER_USER" -E "$PROJECT_DIR/venv/bin/python" manage.py dumpdata \
+        sudo -u "$SERVER_USER" env DJANGO_SETTINGS_MODULE=config.settings.production \
+            "$PROJECT_DIR/venv/bin/python" manage.py dumpdata \
             --natural-foreign --natural-primary \
             --exclude contenttypes \
             --exclude auth.permission \
@@ -65,9 +65,10 @@ case "$MODE" in
 
         echo "[restore] Loading data into PostgreSQL"
         cd "$PROJECT_DIR"
-        export DJANGO_SETTINGS_MODULE=config.settings.production
-        sudo -u "$SERVER_USER" -E "$PROJECT_DIR/venv/bin/python" manage.py migrate --noinput
-        sudo -u "$SERVER_USER" -E "$PROJECT_DIR/venv/bin/python" manage.py loaddata \
+        sudo -u "$SERVER_USER" env DJANGO_SETTINGS_MODULE=config.settings.production \
+            "$PROJECT_DIR/venv/bin/python" manage.py migrate --noinput
+        sudo -u "$SERVER_USER" env DJANGO_SETTINGS_MODULE=config.settings.production \
+            "$PROJECT_DIR/venv/bin/python" manage.py loaddata \
             "$RESTORE_DIR/chatbot_data.json"
 
         echo "[restore] Restarting chatbot service"
