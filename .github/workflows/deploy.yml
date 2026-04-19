@@ -97,7 +97,7 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          curl -s -X POST -H 'Content-type: application/json' --data "{
+          curl -sS -f -X POST -H 'Content-type: application/json' --data "{
             \"text\": \":white_check_mark: Chatbot deploy succeeded for \`${GITHUB_SHA:0:7}\` by ${GITHUB_ACTOR}\n<https://cb.hexbolttechnologies.in|Site> | <${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}|Commit> | <${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}|Run>\"
           }" "$SLACK_WEBHOOK_URL"
 
@@ -106,6 +106,6 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          curl -s -X POST -H 'Content-type: application/json' --data "{
+          curl -sS -f -X POST -H 'Content-type: application/json' --data "{
             \"text\": \":x: Chatbot deploy FAILED for \`${GITHUB_SHA:0:7}\` by ${GITHUB_ACTOR}\n<${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}|View logs>\"
           }" "$SLACK_WEBHOOK_URL"
