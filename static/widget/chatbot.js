@@ -10,6 +10,7 @@ class ChatBotWidget {
         this.currentProvider = 'openai';
         this.currentProviderName = 'ChatBot Assistant';
         this.userIdentifier = this.getUserIdentifier();
+        this.brandSettings = this.loadBrandSettings();
 
         // Apply config from URL params immediately to avoid flash of default colors
         this.loadConfigFromURL();
@@ -161,6 +162,16 @@ class ChatBotWidget {
             messageInput: document.getElementById('message-input'),
             sendBtn: document.getElementById('send-btn'),
             minimizeBtn: document.getElementById('minimize-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            settingsBtn: document.getElementById('settings-btn'),
+            settingsPanel: document.getElementById('settings-panel'),
+            settingsCloseBtn: document.getElementById('close-settings-btn'),
+            settingsSaveBtn: document.getElementById('settings-save-btn'),
+            settingsClearBtn: document.getElementById('settings-clear-btn'),
+            settingBrandGuidelines: document.getElementById('setting-brand-guidelines'),
+            settingBrandTone: document.getElementById('setting-brand-tone'),
+            settingAiTone: document.getElementById('setting-ai-tone'),
+            settingAdditionalContext: document.getElementById('setting-additional-context'),
             botStatus: document.getElementById('bot-status'),
             botName: document.getElementById('bot-name'),
             botAvatar: document.querySelector('.bot-avatar'),
@@ -226,6 +237,30 @@ class ChatBotWidget {
         this.elements.minimizeBtn.addEventListener('click', () => {
             this.toggleMinimize();
         });
+
+        // Reset (clear chat) button
+        if (this.elements.resetBtn) {
+            this.elements.resetBtn.addEventListener('click', () => {
+                if (window.confirm('Clear this conversation? This cannot be undone.')) {
+                    this.clearChat();
+                }
+            });
+        }
+
+        // Settings panel buttons
+        if (this.elements.settingsBtn) {
+            this.elements.settingsBtn.addEventListener('click', () => this.toggleSettingsPanel());
+        }
+        if (this.elements.settingsCloseBtn) {
+            this.elements.settingsCloseBtn.addEventListener('click', () => this.toggleSettingsPanel(false));
+        }
+        if (this.elements.settingsSaveBtn) {
+            this.elements.settingsSaveBtn.addEventListener('click', () => this.saveBrandSettings());
+        }
+        if (this.elements.settingsClearBtn) {
+            this.elements.settingsClearBtn.addEventListener('click', () => this.clearBrandSettings());
+        }
+        this.populateSettingsPanel();
 
         // Error modal buttons
         this.elements.retryBtn.addEventListener('click', () => {
@@ -517,9 +552,15 @@ class ChatBotWidget {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
 
-        // Handle line breaks in messages
-        const formattedContent = content.replace(/\n/g, '<br>');
-        contentDiv.innerHTML = `<p>${formattedContent}</p>`;
+        if (sender === 'bot') {
+            contentDiv.innerHTML = this.renderMarkdown(content);
+            messageDiv.dataset.rawText = content;
+            const copyBtn = this.createCopyButton(messageDiv);
+            contentDiv.appendChild(copyBtn);
+        } else {
+            const escaped = this.escapeHtml(content).replace(/\n/g, '<br>');
+            contentDiv.innerHTML = `<p>${escaped}</p>`;
+        }
 
         const timeDiv = document.createElement('div');
         timeDiv.className = 'message-time';
@@ -529,6 +570,79 @@ class ChatBotWidget {
         messageDiv.appendChild(timeDiv);
 
         return messageDiv;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
+    }
+
+    renderMarkdown(text) {
+        const raw = text == null ? '' : String(text);
+        // If marked or DOMPurify failed to load, fall back to escaped text with <br>.
+        if (typeof window.marked === 'undefined' || typeof window.DOMPurify === 'undefined') {
+            return `<p>${this.escapeHtml(raw).replace(/\n/g, '<br>')}</p>`;
+        }
+        try {
+            const html = window.marked.parse(raw, { breaks: true, gfm: true });
+            return window.DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+        } catch (e) {
+            console.warn('Markdown render failed, falling back to plain text:', e);
+            return `<p>${this.escapeHtml(raw).replace(/\n/g, '<br>')}</p>`;
+        }
+    }
+
+    createCopyButton(messageDiv) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn';
+        btn.title = 'Copy';
+        btn.setAttribute('aria-label', 'Copy message');
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>`;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const raw = messageDiv.dataset.rawText || '';
+            this.copyToClipboard(raw, btn);
+        });
+        return btn;
+    }
+
+    async copyToClipboard(text, btn) {
+        const showCheck = () => {
+            const original = btn.innerHTML;
+            btn.classList.add('copied');
+            btn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>`;
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerHTML = original;
+            }, 1500);
+        };
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            showCheck();
+        } catch (e) {
+            console.warn('Copy failed:', e);
+        }
     }
 
     showTypingIndicator() {
@@ -917,6 +1031,67 @@ class ChatBotWidget {
         this.elements.poweredBy.textContent = `Powered by ${poweredBy}`;
     }
 
+    brandSettingsStorageKey() {
+        const apiKey = this.apiKey || 'noapikey';
+        const userId = this.userIdentifier || 'anon';
+        return `chatbot_brand_settings::${apiKey}::${userId}`;
+    }
+
+    loadBrandSettings() {
+        try {
+            const raw = localStorage.getItem(this.brandSettingsStorageKey());
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            console.warn('Failed to load brand settings:', e);
+            return {};
+        }
+    }
+
+    populateSettingsPanel() {
+        if (!this.elements.settingBrandGuidelines) return;
+        const s = this.brandSettings || {};
+        this.elements.settingBrandGuidelines.value = s.brandGuidelines || '';
+        this.elements.settingBrandTone.value = s.brandTone || '';
+        this.elements.settingAiTone.value = s.aiTone || '';
+        this.elements.settingAdditionalContext.value = s.additionalContext || '';
+    }
+
+    toggleSettingsPanel(show = null) {
+        if (!this.elements.settingsPanel) return;
+        const isHidden = this.elements.settingsPanel.classList.contains('hidden');
+        const shouldShow = show === null ? isHidden : show;
+        this.elements.settingsPanel.classList.toggle('hidden', !shouldShow);
+    }
+
+    saveBrandSettings() {
+        const next = {
+            brandGuidelines: (this.elements.settingBrandGuidelines.value || '').trim(),
+            brandTone: this.elements.settingBrandTone.value || '',
+            aiTone: this.elements.settingAiTone.value || '',
+            additionalContext: (this.elements.settingAdditionalContext.value || '').trim(),
+        };
+        this.brandSettings = next;
+        try {
+            localStorage.setItem(this.brandSettingsStorageKey(), JSON.stringify(next));
+        } catch (e) {
+            console.warn('Failed to persist brand settings:', e);
+        }
+        this.toggleSettingsPanel(false);
+        this.addBotMessage('✅ Brand & tone settings saved. They will apply to your next message.');
+    }
+
+    clearBrandSettings() {
+        this.brandSettings = {};
+        try {
+            localStorage.removeItem(this.brandSettingsStorageKey());
+        } catch (e) {
+            console.warn('Failed to clear brand settings:', e);
+        }
+        this.populateSettingsPanel();
+    }
+
     buildMessageConfig() {
         // Build config object matching message_request.json format
         // Extract pageContext information from current page or config
@@ -926,6 +1101,13 @@ class ChatBotWidget {
         const messageConfig = {
             aiProvider: this.config.aiProvider || this.currentProvider || 'dummy'
         };
+
+        // Merge brand & tone settings (sent on every message; backend persists into session.config)
+        const brand = this.brandSettings || {};
+        if (brand.brandGuidelines) messageConfig.brandGuidelines = brand.brandGuidelines;
+        if (brand.brandTone) messageConfig.brandTone = brand.brandTone;
+        if (brand.aiTone) messageConfig.aiTone = brand.aiTone;
+        if (brand.additionalContext) messageConfig.additionalContext = brand.additionalContext;
 
         // Add pageContext if available
         if (pageContext && Object.keys(pageContext).length > 0) {

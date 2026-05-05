@@ -12,6 +12,7 @@ class ChatService:
     MAX_USER_MESSAGE_TOKENS = 3000
     MAX_JSON_DATA_TOKENS = 2000
     MAX_HISTORY_TOKENS = 1500
+    MAX_BRAND_FIELD_TOKENS = 250
 
     @staticmethod
     def estimate_token_count(text: str) -> int:
@@ -89,6 +90,37 @@ class ChatService:
         return processed_data, csv_data
 
     @staticmethod
+    def build_brand_section(session_config: Dict[str, Any]) -> str:
+        """Build a Brand & Style section from session config, or '' if no brand fields set."""
+        brand_guidelines = (session_config.get("brandGuidelines") or "").strip()
+        brand_tone = (session_config.get("brandTone") or "").strip()
+        ai_tone = (session_config.get("aiTone") or "").strip()
+        additional_context = (session_config.get("additionalContext") or "").strip()
+
+        if not any([brand_guidelines, brand_tone, ai_tone, additional_context]):
+            return ""
+
+        lines = ["Brand & Style:"]
+        if brand_tone:
+            lines.append(f"- Brand tone: {brand_tone}")
+        if ai_tone:
+            lines.append(f"- Writing style: {ai_tone}")
+        if brand_guidelines:
+            truncated = ChatService.truncate_text(
+                brand_guidelines, ChatService.MAX_BRAND_FIELD_TOKENS
+            )
+            lines.append(f"- Brand guidelines: {truncated}")
+        if additional_context:
+            truncated = ChatService.truncate_text(
+                additional_context, ChatService.MAX_BRAND_FIELD_TOKENS
+            )
+            lines.append(f"- Additional context: {truncated}")
+        lines.append(
+            "Apply the brand tone and writing style consistently throughout your response."
+        )
+        return "\n".join(lines)
+
+    @staticmethod
     def build_context_prompt(
         user_message: str,
         session_config: Dict[str, Any],
@@ -124,6 +156,11 @@ Page Information:
 - Page Language: {page_data.get('language') or 'Not provided'}
 
 {f'Special Instructions: {custom_instructions}' if custom_instructions else ''}"""
+
+        # Append brand & tone section if any brand fields are set in session config
+        brand_section = ChatService.build_brand_section(session_config)
+        if brand_section:
+            base_context += f"\n\n{brand_section}"
 
         # Handle JSON data with dynamic CSV conversion
         json_data_section = ""
@@ -245,6 +282,11 @@ Page Information:
 - Page Language: {page_data.get('language') or 'Not provided'}
 
 {f'Special Instructions: {custom_instructions}' if custom_instructions else ''}"""
+
+        # Append brand & tone section if any brand fields are set in session config
+        brand_section = ChatService.build_brand_section(session_config)
+        if brand_section:
+            system_content += f"\n\n{brand_section}"
 
         # Handle JSON data with dynamic CSV conversion
         if json_data:

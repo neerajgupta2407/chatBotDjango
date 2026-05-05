@@ -671,3 +671,259 @@ body:has(.chat-minimized) {
     visibility: hidden !important;
     opacity: 0 !important;
 }
+
+/* Header actions row (settings, reset, minimize) */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Markdown content inside bot messages */
+.bot-message .message-content {
+    position: relative;
+}
+
+.bot-message .message-content > *:first-child {
+    margin-top: 0;
+}
+
+.bot-message .message-content > *:last-child {
+    margin-bottom: 0;
+}
+
+.bot-message .message-content p {
+    margin: 0 0 8px 0;
+}
+
+.bot-message .message-content ul,
+.bot-message .message-content ol {
+    margin: 0 0 8px 0;
+    padding-left: 20px;
+}
+
+.bot-message .message-content code {
+    background: #f1f3f5;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.bot-message .message-content pre {
+    background: #f1f3f5;
+    padding: 10px 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0 0 8px 0;
+    font-size: 12px;
+}
+
+.bot-message .message-content pre code {
+    background: transparent;
+    padding: 0;
+}
+
+.bot-message .message-content blockquote {
+    border-left: 3px solid var(--bot-primary-color);
+    padding: 4px 10px;
+    color: #4a5568;
+    background: #f8f9fa;
+    margin: 0 0 8px 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.bot-message .message-content a {
+    color: var(--bot-primary-color);
+    text-decoration: underline;
+}
+
+/* Markdown tables */
+.bot-message .message-content table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+}
+
+.bot-message .message-content thead {
+    background: #f1f3f5;
+}
+
+.bot-message .message-content th,
+.bot-message .message-content td {
+    padding: 8px 10px;
+    border: 1px solid #e1e5e9;
+    text-align: left;
+    vertical-align: top;
+}
+
+.bot-message .message-content th {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.bot-message .message-content tbody tr:nth-child(even) {
+    background: #fafbfc;
+}
+
+/* Per-message copy button (bot messages only) */
+.copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e1e5e9;
+    color: #6c757d;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    padding: 0;
+}
+
+.bot-message .message-content:hover .copy-btn,
+.copy-btn:focus,
+.copy-btn.copied {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    color: var(--bot-primary-color);
+    background: #fff;
+}
+
+.copy-btn.copied {
+    color: #2f855a;
+    border-color: #c6f6d5;
+    background: #f0fff4;
+}
+
+/* Always show on touch devices (no hover) */
+@media (hover: none) {
+    .copy-btn {
+        opacity: 0.85;
+    }
+}
+
+/* Settings panel */
+.settings-panel {
+    background: #ffffff;
+    border-bottom: 1px solid #e1e5e9;
+    padding: 14px 20px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    animation: settingsSlideDown 0.18s ease-out;
+}
+
+@keyframes settingsSlideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 14px;
+}
+
+.settings-close {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    line-height: 1;
+    color: #8e9297;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.settings-close:hover {
+    color: #1a202c;
+}
+
+.settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: #4a5568;
+}
+
+.settings-field span {
+    font-weight: 500;
+}
+
+.settings-field textarea,
+.settings-field select {
+    font-family: inherit;
+    font-size: 13px;
+    color: #1a202c;
+    padding: 8px 10px;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    resize: vertical;
+}
+
+.settings-field textarea:focus,
+.settings-field select:focus {
+    border-color: var(--bot-primary-color);
+    box-shadow: 0 0 0 3px var(--bot-primary-color-light);
+}
+
+.settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.settings-save,
+.settings-clear {
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.settings-save {
+    background: var(--bot-primary-color);
+    color: #fff;
+}
+
+.settings-save:hover {
+    background: var(--bot-primary-color-dark);
+}
+
+.settings-clear {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.settings-clear:hover {
+    background: #cbd5e0;
+}
