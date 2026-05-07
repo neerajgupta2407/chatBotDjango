@@ -306,6 +306,9 @@ class ChatBotWidget {
             case 'configure':
                 this.updateConfiguration(data);
                 break;
+            case 'set_brand_settings':
+                this.updateConfiguration(data);
+                break;
             case 'page_data':
                 this.handlePageData(data);
                 break;
@@ -406,6 +409,22 @@ class ChatBotWidget {
     updateConfiguration(newConfig) {
         this.config = { ...this.config, ...newConfig };
 
+        // Merge brand/tone keys into brandSettings so they flow through buildMessageConfig()
+        const brandKeys = ['brandGuidelines', 'brandTone', 'aiTone', 'additionalContext'];
+        const brandUpdates = {};
+        for (const key of brandKeys) {
+            if (newConfig[key] !== undefined) brandUpdates[key] = newConfig[key];
+        }
+        if (Object.keys(brandUpdates).length > 0) {
+            this.brandSettings = { ...this.brandSettings, ...brandUpdates };
+            try {
+                localStorage.setItem(this.brandSettingsStorageKey(), JSON.stringify(this.brandSettings));
+            } catch (e) {
+                console.warn('Failed to persist brand settings:', e);
+            }
+            this.populateSettingsPanel();
+        }
+
         // Update current provider if specified
         if (newConfig.aiProvider) {
             this.currentProvider = newConfig.aiProvider;
@@ -413,11 +432,7 @@ class ChatBotWidget {
             this.updateProviderUI();
         }
 
-        // Log the configuration for debugging
         console.log('Widget configuration updated:', this.config);
-
-        // Config will be sent with the next message via buildMessageConfig()
-        // No need for separate API call since send API already updates session config
     }
 
     handlePageData(data) {
@@ -1318,7 +1333,7 @@ function initializeIframeLoader() {
     // Add only UI config to URL parameter (exclude large data payloads)
     // Data payloads (jsonData, pageData) will be sent via postMessage
     const uiConfig = {};
-    const configKeys = ['botColor', 'botMsgBgColor', 'botName', 'botIcon', 'poweredBy', 'aiProvider', 'customInstructions'];
+    const configKeys = ['botColor', 'botMsgBgColor', 'botName', 'botIcon', 'poweredBy', 'aiProvider', 'customInstructions', 'brandGuidelines', 'brandTone', 'aiTone', 'additionalContext'];
 
     for (const key of configKeys) {
         if (chatbotConfig[key]) {
