@@ -669,10 +669,17 @@ class ChatBotWidget {
             }, 1500);
         };
 
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
+        let success = false;
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
                 await navigator.clipboard.writeText(text);
-            } else {
+                success = true;
+            } catch (e) {
+                console.warn('Clipboard API blocked, trying fallback:', e);
+            }
+        }
+        if (!success) {
+            try {
                 const ta = document.createElement('textarea');
                 ta.value = text;
                 ta.style.position = 'fixed';
@@ -681,11 +688,12 @@ class ChatBotWidget {
                 ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
+                success = true;
+            } catch (e) {
+                console.warn('Copy fallback also failed:', e);
             }
-            showCheck();
-        } catch (e) {
-            console.warn('Copy failed:', e);
         }
+        if (success) showCheck();
     }
 
     showTypingIndicator() {
@@ -1308,6 +1316,7 @@ function initializeIframeLoader() {
     // Create iframe container
     const iframe = document.createElement('iframe');
     iframe.id = 'chatbot-iframe';
+    iframe.allow = 'clipboard-write';
     // Start with minimized dimensions (widget starts minimized by default)
     iframe.style.cssText = `
         position: fixed;
