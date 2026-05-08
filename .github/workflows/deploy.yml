@@ -64,21 +64,22 @@ jobs:
             cd /var/www/chatbot
 
             TS=$(date +%Y%m%d_%H%M%S)
-            mkdir -p backups
-            sudo -u postgres pg_dump chatbot_db | gzip > backups/db_pre_deploy_${TS}.sql.gz
+            mkdir -p /var/www/chatbot/backups
+            PGPASSWORD=flKNVB5uxehxdtZZmCagxAkRTAMArmQ pg_dump -U chatbot_user -h localhost chatbot_db | gzip > /var/www/chatbot/backups/db_pre_deploy_${TS}.sql.gz
 
-            sudo -u www-data git fetch origin main
-            sudo -u www-data git reset --hard origin/main
+            cd /var/www/chatbot
+            git fetch origin main
+            git reset --hard origin/main
 
-            sudo -u www-data venv/bin/pip install -r requirements.txt --quiet
-            sudo -u www-data venv/bin/python manage.py migrate --noinput
-            sudo -u www-data venv/bin/python manage.py collectstatic --noinput
+            venv/bin/pip install -r requirements.txt --quiet
+            venv/bin/python manage.py migrate --noinput
+            venv/bin/python manage.py collectstatic --noinput
 
             systemctl restart chatbot
             sleep 3
             systemctl is-active --quiet chatbot || (journalctl -u chatbot -n 30 --no-pager && exit 1)
 
-            ls -t backups/db_pre_deploy_*.sql.gz | tail -n +11 | xargs -r rm
+            ls -t /var/www/chatbot/backups/db_pre_deploy_*.sql.gz | tail -n +11 | xargs -r rm
 
       - name: Health check
         uses: appleboy/ssh-action@v1.0.3
