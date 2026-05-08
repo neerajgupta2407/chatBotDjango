@@ -5,7 +5,7 @@ Gunicorn configuration file for Django Chatbot application
 import multiprocessing
 
 # Server socket
-bind = "127.0.0.1:8000"
+bind = "127.0.0.1:8082"
 backlog = 2048
 
 # Worker processes
@@ -30,7 +30,6 @@ proc_name = "chatbot_django"
 
 # Server mechanics
 daemon = False
-pidfile = "/var/run/gunicorn/chatbot.pid"
 user = None
 group = None
 tmp_upload_dir = None
